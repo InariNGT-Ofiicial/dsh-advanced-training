@@ -1,0 +1,33 @@
+{
+  "songRoot": "",
+  "workRoot": "",
+  "receiptDir": "",
+  "ddspDir": "",
+  "ddspEnv": "",
+  "gsvDir": "",
+  "gsvEnv": "",
+  "pyEnv": "",
+  "ffmpeg": "ffmpeg",
+  "pipelines": {
+    "ddsp": {
+      "expName": "my-ddsp-voice",
+      "configName": "reflow-barbara.yaml",
+      "trainRoot": "",
+      "voiceLibDir": ""
+    },
+    "gsv": {
+      "version": "v2",
+      "expName": "my-tts-voice"
+    },
+    "anime": {
+      "python": "python",
+      "ffmpeg": "ffmpeg",
+      "whisperModel": "",
+      "camppModel": "",
+      "sepRoot": "",
+      "sepPython": "",
+      "sepConfig": "",
+      "sepCheckpoint": ""
+    }
+  }
+}

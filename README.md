@@ -1,88 +1,115 @@
 # dsh-advanced-training
 
-「先进训练方法」独立 DSH 插件（DDSP / GPT-SoVITS / RVC 三线）。
+DeepseekHarness 中面向音色模型训练的统一入口。一个主插件接入游戏素材、番剧摘句和自备单人语音集，衔接数据整理、质量检查、DDSP / GPT-SoVITS 训练与模型交接。
 
-把散落在训练管线里、**实测有效**的三条方法收拢成独立工具集，与出料/训练插件解耦。
-所有方法都有同批 383 条语料的对照数据背书（2026-10-24 实验）：
+**[v0.2.0](https://github.com/InariNGT-Ofiicial/dsh-advanced-training/releases/tag/v0.2.0)** 原四个质量工具保持兼容，旧版说明存于 [质量方法与历史实验](docs/QUALITY_METHODS.md)。
 
-| 方法 | 旧做法 | 新做法 | 效果 |
-|---|---|---|---|
-| 音频留尾 | 双向裁到「最后有声帧 + 50ms」，每条停在满电平 | 只裁句首、保留句尾自然衰减、兜 0.16s 静音底 | 末三字念出率 **33% → 93%**，PER **0.197 → 0.018** |
-| 消 UNK | `「」『』～―（）()` 与 `#` 全部降级成 UNK，所有词边界共享同一 embedding | 剥无音值符号、过滤 `#`（不进符号表，避免底模维度不匹配） | UNK 17 → 0 |
-| 无参考验收 | 凭耳朵 A/B，听不出结构性缺陷 | ASR 回转写 → CER + 末尾字覆盖 + 尾音统计 | 可量化、可对比 |
+## 生态位置
 
-## 工具集
+DeepseekHarness 对话 → 本插件统一组织/派发 → 对应素材与训练后端 → 模型、配置、日志交接。
 
-| 工具 | 适用线 | 作用 |
-|---|---|---|
-| `adv_doctor` | 三线 | 工程体检：DDSP 整合包与科学计算 python、GSV 工程与 venv、rvc-voice-kit |
-| `adv_tail_audit` | **三线通用** | 对已有数据集目录做句尾体检（递归扫 wav/flac），输出 `tail_ms / end_db / cut_ratio` 与判读 |
-| `adv_unk_patch` | **GSV 专用** | 消 UNK 文本补丁（apply / revert / 幂等 / 备份 / 符号表核对） |
-| `adv_ab_eval` | **三线通用** | 验收 A/B：对已合成的 wav 目录跑 ASR 回转写，产出 CER、末尾字覆盖率、尾音统计 |
+| 内置来源 | 承担的工作 |
+| --- | --- |
+| [dsh-train-pipeline 0.5.0](https://github.com/InariNGT-Ofiicial/dsh-train-pipeline) | 兼容封包解包、角色盘点、DDSP 出料、质量检查、预处理、训练、状态与模型注册 |
+| [dsh-anime-voice](https://github.com/InariNGT-Ofiicial/dsh-anime-voice) 摘句/整集重建脚本 | 候选说话人、人工角色映射、目标切片、台词清单与训练输入桥接 |
+| 同仓库 `tts-train-pipeline` 0.2.1 | GPT-SoVITS 原文配对出料、无文本语音 ASR 回标、预处理、训练、状态与模型注册 |
 
-**为什么三线通用**：RVC / DDSP / GPT-SoVITS 的数据集与合成产物落盘都是 wav——
-体检与度量只看波形和转写，与模型线无关。唯一线绑定的是 UNK 补丁：
-文本符号链路只有 GPT-SoVITS 有；DDSP/RVC 是 SVC 不吃文本，不存在 UNK 问题。
+相关项目的固定运行源码已内置，不必分别注册两个训练插件。具体算法和训练仍由 DDSP-SVC、GPT-SoVITS 等上游工程执行；不同路线的模型不合并或互转。来源提交和文件哈希见 [manifest](vendor/manifest.json)，许可见 [第三方说明](THIRD_PARTY_NOTICES.md)。
 
-**为什么不做合成/训练**：那是各自管线插件的职责，这里不重复造轮子。
-本插件只做「体检 → 修正 → 验收」闭环里的体检与验收两环，外加一个文本修正补丁。
+外部工程、Python 环境、解包工具与预训练权重需要自行配齐；加载插件不会安装依赖、下载模型、启动训练或生成音频。
 
-## 三线组合表
+## 安装与配置
 
-| 环节 | DDSP | GPT-SoVITS | RVC |
-|---|---|---|---|
-| 出料（含留尾） | `train_build`（0.5.0 默认留尾） | `tts_build` `tailPad=true` | 数据集用留尾版切片 |
-| 出料后体检 | `adv_tail_audit` | `adv_tail_audit` | `adv_tail_audit` |
-| 训练前文本修正 | —（不吃文本） | `adv_unk_patch` | —（不吃文本） |
-| 训练 | `train_run` | `tts_run` | `rvc-voice-kit` 六段编排 |
-| 合成 A/B 产物 | `train_infer` | `tts_infer` | `python -m rvcx.voice convert` |
-| 验收 | `adv_ab_eval` | `adv_ab_eval` | `adv_ab_eval` |
-
-## 判读口径（与 dsh-train-pipeline 0.5.0 完全一致）
-
-- `end_db`：最后有声采样前 40ms 的 RMS，相对全句 90 分位电平。**真人自然收尾约 −24dB**
-- `end_db > −12dB` = 句子停在满电平（被切尾）
-- `cut_ratio > 0.3` = 判「句尾被切断：训出来的模型会吞末字」
-- 短促句（「あっ！」）停在较高电平是**正常的**——只看整体比例，别逐条判废
-
-## 验收 A/B 的立场
-
-1. **CER 绝对值不可迷信**：ASR 是会犯错的第三方（实测「朝武芳乃」被听成「友竹よしの」、
-   「有地さん」被听成「フリッツさん」）。看 A vs B 同批句子的**相对差**。
-2. **末尾字覆盖（tail_hit）是结构性信号**：ref 去标点后取末 k 个字符（默认 3），
-   在 ASR 去标点文本的末 8 字符窗口里找子串。切尾训出的模型会吞末字，这个指标直接抓它。
-3. **尾音统计一并看**：A/B 产物本身的 `cut_ratio` 能告诉你「模型是否学会了在满电平处断句」。
-
-## 依赖
-
-- `adv_tail_audit`：numpy + soundfile（默认用 DDSP 整合包的 env，`DSH_TRAIN_PYTHON` 可覆盖）
-- `adv_unk_patch`：纯标准库，任何 python 都能跑
-- `adv_ab_eval`：faster-whisper（GSV venv 里现成有，`DSH_GSV_PYTHON` 可覆盖）；
-  **默认离线**（`HF_HUB_OFFLINE=1`），模型缓存自动发现 `<gsvDir>/../hf_cache`；
-  本地没有时传 `allowDownload=true` 才联网下载——不偷偷拉几个 GB 的权重
-
-## 本机实测记录（2026-10-26）
-
-- `adv_tail_audit` 对芳乃留尾数据集：358 条，收尾中位 **−23.4dB**（贴真人 −24dB），
-  满电平比例 0.017 → ✅ 正常
-- 同一工具对 GSV 线旧切尾数据集（tts/datasets/yoshino）：满电平比例 **0.642** → ❌ 应重出料
-- `adv_unk_patch` 对真实 GSV 工程：报 `already-external`（工程已有手工等价修复，不重复插入）；
-  对纯原版副本 apply → 幂等 → revert 全部通过，revert 后与原版逐字节一致
-- `adv_ab_eval` 对原声数据集 8 条：CER 0.171 / 末 3 字命中 75%（错误集中在专有名词，符合预期）
-
-## 安装与自测
-
-```bash
-dsh plugin add <本目录>          # cordis.patch.yml 随包加载
-npm test                         # 4 个工具契约 + 3 个 py 脚本语法
+```powershell
+git clone https://github.com/InariNGT-Ofiicial/dsh-advanced-training.git
+cd dsh-advanced-training
+# 将 training.example.json 复制到自己的训练工作区，填写本机路径。
+$env:DSH_ADVANCED_CONFIG = 'D:/AudioWork/training.local.json'
+dsh plugin add .
 ```
 
-## 已知边界
+重载 DeepseekHarness。`DSH_ADVANCED_CONFIG` 指向本地 JSON，也可在 Cordis 配置设置 `trainingConfig`；文件内容优先于 bundle patch 默认值。未指定文件时沿用既有配置/环境变量。
 
-- RVC 线本机只有 rvc-voice-kit 工具链，`adv_ab_eval` 对 RVC 产物已可用（wav 进 wav 出），
-  但**尚未用真实 RVC 换声产物跑过全量验收**——工具对 wav 一视同仁，理论无差别，待实测背书。
-- `adv_ab_eval` 的 ASR 单卡逐条转写，383 条全量约几十分钟；先用 `limit` 抽样看信号再全量。
+模板：[training.example.json](training.example.json)。
+
+- 共用：`songRoot/workRoot/receiptDir/ffmpeg`。
+- DDSP：`ddspDir/ddspEnv`；`pipelines.ddsp` 配独立 `trainRoot`、实验名、配置文件、模型库。
+- GPT-SoVITS：`gsvDir/gsvEnv`；`pipelines.gsv` 配实际已准备的版本、实验名和训练参数。模板 v2 为示例，不代替权重。
+- 质量检查：`pyEnv` 需 numpy/soundfile，旧 ASR 评估用 `gsvEnv`。
+- 番剧：`pipelines.anime` 配分析 Python、FFmpeg、本地 `whisperModel`，以及含 `campplus_cn_common.bin` 的 `camppModel`。整集重建另需 `sepRoot/sepPython/sepConfig/sepCheckpoint`。参见 [分析依赖](vendor/anime-voice/requirements-analysis.txt)。
+
+本地路径、音频、权重和配置不提交 Git。统一入口发现显式配置的训练工程路径不存在时会报错，不静默换成另一份工程。
+
+## 工具与执行
+
+主插件注册 7 个工具：
+
+| 工具 | 功能 |
+| --- | --- |
+| `adv_train_catalog` | 返回已接入路线、操作和真实参数 schema，可按 route/action 查询 |
+| `adv_train_plan` | 从游戏、番剧、自备语音制定逐步流程，标出人工检查和需要替换的实际输出；只制定计划 |
+| `adv_train` | 实际派发内置后端，校验 params，返回后端结果和持久回执 |
+| `adv_doctor` | 保留原三线体检；只用一条训练线时优先调用该路线 doctor |
+| `adv_tail_audit` | 保留句尾完整性检查，源切尾需回源重建 |
+| `adv_unk_patch` | 保留 GPT-SoVITS 专用文本修正，可计划、应用与回滚 |
+| `adv_ab_eval` | 保留对已有音频的评估接口，不合成音频，也不进入默认训练流程 |
+
+对话示例：“用这个目录里角色 A 的语音训练 DDSP 音色，先检查环境和数据，再按报告推进，保留模型、配置与日志。”
+
+工具调用示例：
+
+```json
+{"tool":"adv_train_plan","arguments":{"route":"ddsp","sourceType":"audio","source":"D:/AudioWork/voice","speaker":"角色A"}}
+```
+
+```json
+{"tool":"adv_train_catalog","arguments":{"route":"ddsp","action":"build"}}
+```
+
+```json
+{"tool":"adv_train","arguments":{"route":"ddsp","action":"scan","params":{"input":"D:/AudioWork/voice"}}}
+```
+
+```json
+{"tool":"adv_train","arguments":{"route":"ddsp","action":"build","params":{"input":"D:/AudioWork/voice","speakers":["角色A"]}}}
+```
+
+`ddsp/gsv` 是训练路线，`anime` 准备素材。params 以 catalog 的后端 schema 为准，不把 DDSP 的 `input/speakers` 原样传给 GPT-SoVITS 的 `lines/voiceDir/speaker`。
+
+`dryRun=true` 只校验参数和预览派发，不执行，不证明环境/产物通过。`run` 成功只代表后端接受/启动任务，需继续 `status` 查进程、日志和检查点。`stop/register` 沿用后端进程识别与覆盖保护。
+
+统一回执默认存于 `<workRoot>/advanced-training/receipts/`，包含实际后端、参数、起止时间和结果。后端训练日志仍由原管线保存。
+
+## 三类素材
+
+**自备单人语音**：DDSP 用 `scan → build → qc → preprocess → run → status → register`。GPT-SoVITS 有原台词时用 JSONL 配对出料；无台词时 `build voiceOnly=true allowEmptyText=true → asr`，人工校对和尾音检查后预处理。空文本 WAV 不能当作已配对语料。
+
+**游戏素材**：先 `ddsp/unpack`，读取实际解包目录再扫描。GPT-SoVITS 优先用 `gsv/script` 保留游戏剧本原文。解包支持范围由上游实现决定，不承诺所有游戏或加密格式。
+
+**番剧素材**：`anime/extract` 导出候选说话人和台词；人工确认映射后 `anime/refine` 导出目标切片。`anime/bridge` 将相对 `file` 或标准 `train.list` 转成训练器识别的绝对 `voice_path`，逐条核对音频存在，保留原台词、时间和来源。桥接后选 DDSP 音频路线或 GPT-SoVITS 配对路线。
+
+含配乐或重叠对白时，不因自动摘句就认定适合训练。`anime/rebuild` 复用整集分离/ASR/切片/声纹筛选/报告流程；输入 `workDir/src/<episode>.m4a`、显式片段范围和人工确认的参考音频目录。输出固定为 `<workDir>/_full/out/ts/train.list`，不执行原脚本训练/推理阶段；拒绝覆盖已有非空最终训练集目录。
+
+## 使用边界
+
+- 新统一入口止于素材接入、数据整理、质量检查、对应模型训练与交接，不派发推理、配音、翻唱或发布；旧评估接口只消费已有产物。
+- 一站式指在同一主插件中组织和调用，不保证一次请求无人介入跑完。角色、台词与素材质量仍需回听和校对。
+- 模型出现/注册成功只证明文件存在或可发现，不证明音质达标。不同模型格式不互通，不用早期日语样例替代本次训练验收。
+- RVC 保留既有质量工具，本版未接入 RVC 训练编排；真实 RVC 产物的全量验收缺口仍保留。
+- 不分发模型、环境或私人素材。番剧适配器要求已下载的本地 ASR/声纹模型。
+
+## 验证
+
+```powershell
+npm test
+# 可选：只用合成语料跑真实 Python/FFmpeg 扫描和出料，不启动训练。
+$env:TEST_AUDIO_PYTHON = '<装有 numpy/soundfile 的 python>'
+$env:TEST_FFMPEG = '<ffmpeg 可执行文件>'
+npm run test:local
+```
+
+`npm test` 覆盖契约、真实后端注册/派发、参数拒绝、执行回执、路径保护、番剧参数/产物检查和台词桥接。番剧模型执行使用 mock。实测与未验证部分见 [验证记录](docs/VALIDATION.md)。
 
 ## License
 
-UNLICENSED。参见各上游仓库的许可说明；本插件不授予再分发权。
+主插件仍为 UNLICENSED。内置来源保留各自声明，本次整合不改变许可，也不将代码许可扩展到模型或素材。

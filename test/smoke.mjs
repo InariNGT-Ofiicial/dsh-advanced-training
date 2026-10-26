@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
-const EXPECTED = ['adv_doctor', 'adv_tail_audit', 'adv_unk_patch', 'adv_ab_eval'];
+const EXPECTED = ['adv_doctor', 'adv_tail_audit', 'adv_unk_patch', 'adv_ab_eval', 'adv_train_catalog', 'adv_train_plan', 'adv_train'];
 
 const mod = await import('../src/index.js');
 assert.equal(mod.name, 'advanced-training', 'name 必须是 advanced-training');
@@ -59,7 +59,7 @@ for (const [n, def] of registered) {
 const here = fileURLToPath(new URL('.', import.meta.url));
 const root = join(here, '..');
 for (const script of ['tail_audit.py', 'asr_cer.py', 'patch_unk.py']) {
-  const out = execFileSync('python', ['-c', `import ast,sys;ast.parse(open(sys.argv[1],encoding="utf-8").read());print("ok")`, join(root, 'py', script)],
+  const out = execFileSync(process.env.TEST_PYTHON || 'python', ['-c', `import ast,sys;ast.parse(open(sys.argv[1],encoding="utf-8").read());print("ok")`, join(root, 'py', script)],
     { encoding: 'utf8' });
   assert.ok(out.includes('ok'), `${script} 语法不过`);
 }

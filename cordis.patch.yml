@@ -22,6 +22,8 @@
     - id: advanced-training
       name: 'dsh-advanced-training'
       config:
+        # 一个本地 JSON 统一配置各训练后端；文件内容优先于本 patch 的默认值。
+        trainingConfig: !!js process.env.DSH_ADVANCED_CONFIG ?? ''
         # ── 三线工程（留空 = 自动发现）────────────────────────────────
         songRoot: !!js process.env.DSH_COVER_ROOT ?? ''
         ddspDir: !!js process.env.DSH_DDSP_DIR ?? ''

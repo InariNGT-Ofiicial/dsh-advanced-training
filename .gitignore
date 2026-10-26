@@ -1,6 +1,11 @@
+training.local.json
+train.local.json
+tts.local.json
+advanced-training/
 node_modules/
-_tmp*/
-*.log
+*.tgz
 __pycache__/
 *.pyc
+_tmp*/
+*.log
 .venv/

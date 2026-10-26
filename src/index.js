@@ -1,28 +1,16 @@
 /**
- * dsh-advanced-training —— 「先进训练方法」独立插件（DDSP / GPT-SoVITS / RVC 三线）。
- *
- * 定位：把散落在训练管线里的三条实测有效的「先进方法」收拢成独立工具集，
- * 与具体出料/训练插件解耦：
- *
- *   1. adv_tail_audit   尾音体检（三线通用）——数据集是 wav 就能量，
- *                       口径与 dsh-train-pipeline 0.5.0 的 end_metrics 完全一致。
- *   2. adv_unk_patch    消 UNK 文本补丁（GSV 专用——文本符号链路只有 GPT-SoVITS 有；
- *                       DDSP/RVC 是 SVC，不吃文本，不存在 UNK 问题）。
- *   3. adv_ab_eval      验收 A/B（三线通用）——不管 A/B 产物是 GSV 合成、
- *                       DDSP 还是 RVC 换声，落盘都是 wav，同一把尺子量。
- *   4. adv_doctor       三线工程体检。
- *
- * 本插件刻意**不做**合成/训练：那是各自管线插件的职责。
- * 组合方式见 README「三线组合表」。
- *
- * 独立复刻声明：py/patch_unk.py 复刻自 dsh-tts-train-pipeline 0.2.x；
- * end_metrics 口径复刻自 dsh-train-pipeline 0.5.0。两个上游插件保持原样。
+ * dsh-advanced-training: unified material, dataset, training and model-handoff entry.
+ * Built-in DDSP/GPT-SoVITS/anime backends retain their own formats and engines.
+ * Original quality tools remain compatible; inference/cover/publishing are excluded
+ * from the new training entry.
  */
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveConfig } from './config.js';
 import { runPy, clip } from './exec.js';
+import { registerTrainingHub } from './training-hub.js';
+import { loadTrainingConfig } from './training-config.js';
 
 const PY_DIR = fileURLToPath(new URL('../py/', import.meta.url));
 
@@ -49,6 +37,7 @@ const wrap = (run) => ({
 });
 
 export async function apply(ctx, cfg) {
+  cfg = loadTrainingConfig(cfg || {});
   const { logger } = ctx;
   const tools = ctx.get('tools');
   const register = (def) => tools.register(def);
@@ -295,5 +284,7 @@ export async function apply(ctx, cfg) {
     }),
   });
 
-  logger.info(`[advanced-training] 已注册 4 个工具 · ddsp=${c.ddspDir || '(无)'} · gsv=${c.gsvDir || '(无)'} · rvc=${c.rvcKitDir || '(无)'}`);
+  await registerTrainingHub(ctx, cfg || {});
+
+  logger.info(`[advanced-training] 已注册 7 个工具（含统一训练入口） · ddsp=${c.ddspDir || '(无)'} · gsv=${c.gsvDir || '(无)'} · rvc=${c.rvcKitDir || '(无)'}`);
 }

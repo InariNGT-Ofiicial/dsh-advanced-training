@@ -1,0 +1,322 @@
+{
+  "format": 1,
+  "note": "Pinned runtime snapshots; no weights, media, environments or local configuration.",
+  "sources": [
+    {
+      "id": "ddsp-pipeline",
+      "repository": "https://github.com/InariNGT-Ofiicial/dsh-train-pipeline",
+      "commit": "81a55fbb6522f3e0313c07a4f52a964958d205be",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "9b5841361376aceb2a7f5da1476b659be6e9d9b1153b37662b54e95f339cb2d3"
+        },
+        {
+          "path": "README.md",
+          "sha256": "e4db7932f09d804c7d9c3456d3462141012fe70462ff091c670070d62bc3287c"
+        },
+        {
+          "path": "THIRD_PARTY_NOTICES.md",
+          "sha256": "3d8f0d5977713b8ee2a044e50d9ad1da01fec9c6177fce61ffc01d33ec05e149"
+        },
+        {
+          "path": "docs/DSH_COMPATIBILITY.md",
+          "sha256": "4e4f3a440a672bb421e4cd031bb2785377c14e08b541409341fdad4459b5dee5"
+        },
+        {
+          "path": "docs/INSTALL.md",
+          "sha256": "e97042bc44814a87722bb7ac352c5ab22623286d98da7b433ffd656c2aef662c"
+        },
+        {
+          "path": "docs/INTEGRATION.md",
+          "sha256": "1dbd465e7c3d733d280942fdabadaae496db382de7d8df75cb686cdea5ffa93a"
+        },
+        {
+          "path": "docs/RELEASE.md",
+          "sha256": "64093ea7387d55ef3ff555b083f2e606ac5ae22cc883a64be9e458299bab22cd"
+        },
+        {
+          "path": "docs/VALIDATION.md",
+          "sha256": "198cd2d1740dcf75e325ae0fd84997bde043dd02280b9ccc3a5d415d6aec5a3b"
+        },
+        {
+          "path": "docs/YOSHINO_MODEL.md",
+          "sha256": "556eec3940e7f6eed3ca1e9f3aa8211809f0b69e190392d26e19b5ee74bc64cd"
+        },
+        {
+          "path": "materials/README.md",
+          "sha256": "3f56581b97373620790ee1caac46fb7e6680c7628de1dbce482ec29b73909bc3"
+        },
+        {
+          "path": "package.json",
+          "sha256": "27f2bf5f1d8ff5a6db83141b0cb92fe8643728447f866f188f26f58f47323112"
+        },
+        {
+          "path": "py/build_dataset.py",
+          "sha256": "fd429d7a864c7576807f26aa7cf7304ad2e37ed701a1da5f263ac17be7e0bd1e"
+        },
+        {
+          "path": "py/cxdec.py",
+          "sha256": "0af145b5aa886dc8776321b11c3f86ea96394fb9a538d46b42b7f63ff9dee441"
+        },
+        {
+          "path": "py/krkr_parse.py",
+          "sha256": "8a20d58a013778bcb992b12ff02f741c0472299759bdbb4b06900ef13b0f7337"
+        },
+        {
+          "path": "py/probe_audio.py",
+          "sha256": "c89494f6512352ae2177593b790a1fb677216103abc401796a014f303a2ccb8d"
+        },
+        {
+          "path": "py/qc_dataset.py",
+          "sha256": "4978cf300aa811e1415a8ca0015591059085e61be02d2a75d8dc7340d0d7469c"
+        },
+        {
+          "path": "py/xp3_yuzu.py",
+          "sha256": "50795a0b80dcac877b2390b47e26c916854308549e91d5f66f611c31e8aa2561"
+        },
+        {
+          "path": "src/checks.js",
+          "sha256": "cf3157cc4cbeefe7c2bd517d25f41983121542917ceed939d481686e56c2f57d"
+        },
+        {
+          "path": "src/config.js",
+          "sha256": "0ac9bb39e8e5546f9f088cd00c07d4ed99fe67ac10a53ab0a65e7d9a71190ba3"
+        },
+        {
+          "path": "src/execution.js",
+          "sha256": "b17495208b95d61873e62115000347305714b5794e00f350f2f170f5c7e4be90"
+        },
+        {
+          "path": "src/hunt.js",
+          "sha256": "a56ac66dd18351d4d25dd0050e15a81c5c562fbb1efbc87ee9d3340a33713eae"
+        },
+        {
+          "path": "src/index.js",
+          "sha256": "db8c7e5b71c549421d00ed1626f211d32e5849df10ecfd78d99d5cddb5f49f35"
+        },
+        {
+          "path": "src/net.js",
+          "sha256": "7711ecf35c7ae671a09fdfc048c8ab7336eceb4860b526a0e5758bf15c4b690d"
+        },
+        {
+          "path": "src/sources/galgame.js",
+          "sha256": "9feabee7e284da7e9d8c14e3f1e2a4bcf6f9064eb4b5a41ab6e2137b00c0a9fa"
+        },
+        {
+          "path": "src/sources/index.js",
+          "sha256": "1f524ff3b6ed921502118cb8b9313e5e9bab6873b87b4a3d5e9650506459d1c4"
+        },
+        {
+          "path": "src/sources/media.js",
+          "sha256": "bd4748bf1a5027f38a42802a39bb9c52163f99b153ce5b60720f3859796a186e"
+        },
+        {
+          "path": "src/stages.js",
+          "sha256": "4df2d97aee1044377495a861b8c3a462150c6cc65684ff34233b6c61721a7bc6"
+        },
+        {
+          "path": "src/toolchain.js",
+          "sha256": "1fc0370a01b88077ea67304ee7ef750814ca5c0ea98687ce8fd0e8619a5a1229"
+        },
+        {
+          "path": "src/unpack.js",
+          "sha256": "10d269f03c9916866daf5255564d84e3d53417d2d4fbb8dff4555012dac97fe6"
+        }
+      ]
+    },
+    {
+      "id": "anime-voice",
+      "repository": "https://github.com/InariNGT-Ofiicial/dsh-anime-voice",
+      "commit": "ace605e5c8ae845f3bda66d3ff1bb59606e4f41e",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "4580d492c4f21a8f3e655d1e32381fa92e76d92f9b62786d75a61413fe815fe4"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/README.md",
+          "sha256": "c0cd29686a784c88b195134a1a493bf88bc446d94e3b257c1e83b92613255e98"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/package.json",
+          "sha256": "6dfc7f459a6fb9bf54acddac74d36d7125408ba79e63890437b34435830b38dd"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/py/asr_label.py",
+          "sha256": "eac64f819106fb5449964548c837aefbff59444862bf0ed010f8575cf81e0fda"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/py/build_tts_dataset.py",
+          "sha256": "d717db8a310b5d3827ea685792271aeafc853e9254dfac12e4c2fa197fbdfe9f"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/py/env_probe.py",
+          "sha256": "d20c7a080ecc5b7d1a541911b9b431ed72b9340248386d1785d52b13f087b361"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/py/extract_scn_text.py",
+          "sha256": "d058dccfc66cfbc5d77601a0a6a70fd98e12c3eec187c2f3167e64f4466a3eee"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/py/gsv_infer.py",
+          "sha256": "8ea5f55aa378f46b91ec6edae7fa8ba8f882eeef9efb641a1496ba6729a2242e"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/py/make_train_config.py",
+          "sha256": "4fcf319bfe2af007a4e8f29da4dea4bf296cceb3846b948f11cbae657d946c0a"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/py/patch_unk.py",
+          "sha256": "1b3e49f4ed0aee28a71ab5230b1a740793439cfdb68e83af34c50c7a47930d7b"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/py/run_two_stage.py",
+          "sha256": "ea2e6fae9f8e6a77220490c0a54e5df879d13212c9d0ebcab8db24b02a8391bd"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/py/scan_corpus.py",
+          "sha256": "2cd8b20def7f18235febf3b583b1240659cb93fa1e037e9f74aa888140e316d3",
+          "patchedSha256": "7728ccfe2a04e54ff77bdd23c385ff0a8c185661f9387737077f5789e14ab36e",
+          "patch": "Prefer exact existing voice_path before basename lookup, matching build_tts_dataset.py and the anime bridge."
+        },
+        {
+          "path": "plugins/tts-train-pipeline/src/asr-gate.js",
+          "sha256": "94f74189b3ffdb7d96c8f07d97236e7234d3e04a5c057141397af717a18adbc9"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/src/checks.js",
+          "sha256": "fa7e9e433e08549aecff3db3c0b2bcb3df7ab2c26562e011ccacbb7366257f6f"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/src/config.js",
+          "sha256": "e8b69ed5a770b25ba1d963c30124ac2d06c904ffbc8a17f3f407fa5b646100ec"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/src/execution.js",
+          "sha256": "c0c18ad104be8d381237945dab2814d30dea1c597e69e758beb2759d8a24ff2d"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/src/gsv.js",
+          "sha256": "c1401f36e0024fd6fbd0ebd8497ee94123486a500a41a950dc5c5c0da2427eca"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/src/index.js",
+          "sha256": "de1d96cd72606b33e6bdfcc2c506f83586ee967ee1f622f730aeb18946262b52"
+        },
+        {
+          "path": "plugins/tts-train-pipeline/src/stages.js",
+          "sha256": "19cad62df08c27a7dc0c0c5cc38789216014a7d17de28d1bbb6b083ee227fa67"
+        },
+        {
+          "path": "requirements-analysis.txt",
+          "sha256": "8719f932b2aeff6ef8e66eff87efebbee9d7ccdd6cc30177aa91c655812968e0"
+        },
+        {
+          "path": "skills/anime-voice-clone-training/scripts/asr_full.py",
+          "sha256": "f87117bba68876adcb715f71c6fc65f5e0dde37b6c38324d610aafdbcac0888f"
+        },
+        {
+          "path": "skills/anime-voice-clone-training/scripts/asr_full2.py",
+          "sha256": "6306319d2b8690a94ddad853834b1eaef97758dc1881d1bec3caccd2b4a6f9d3"
+        },
+        {
+          "path": "skills/anime-voice-clone-training/scripts/audio_metrics.py",
+          "sha256": "85283264815665b2251ebd036537f096c7bd8b2068f67e8cc59cbbd4b44a4bc0"
+        },
+        {
+          "path": "skills/anime-voice-clone-training/scripts/filter_speaker.py",
+          "sha256": "7a8b79dfa3acc994cff449863392b8c134bf778a326e48523d5b4ac488624c2d"
+        },
+        {
+          "path": "skills/anime-voice-clone-training/scripts/infer_tts.py",
+          "sha256": "0e5145f7023f055a4305bee6c83d269cb92ad977e148c5ca14fb06c0e286049a"
+        },
+        {
+          "path": "skills/anime-voice-clone-training/scripts/make_dataset_report.py",
+          "sha256": "01e263aaa69c9c856381f6b0fe1d0825f5895d4d5d86dc85473512a206014d01"
+        },
+        {
+          "path": "skills/anime-voice-clone-training/scripts/run_pipeline.py",
+          "sha256": "7f592172d03a46303c66c0efed90613575c54c2e14faab24c93cf6cbcb1c52f8"
+        },
+        {
+          "path": "skills/anime-voice-clone-training/scripts/split_full.py",
+          "sha256": "7bb42c55557eec7214b391fef73c3b81a8dcf48a98e8f4383a62f1bde4501af8"
+        },
+        {
+          "path": "skills/anime-voice-clone-training/scripts/train_sovits.py",
+          "sha256": "d03893075fb864c880ec190f674ef43fb0f09ed069189026e5b7e8464e6c1d6e"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/anchor_speakers.py",
+          "sha256": "cd1fabdf7e10a89d402e6d7042a83af1a7745be386da4c45e1185d97577d13b1"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/anime_lines.py",
+          "sha256": "b9bfe3362e84602e22874bb4c2a38baf18388d46723611ccc61abd73cf69ada1"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/asr_probe.py",
+          "sha256": "717464719cc7d65042fdf16eff4a136cad2229262165ba0efab1b9859b1b175f"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/asr_regress.py",
+          "sha256": "b8f8f1130fe386e27f7be66799135175dce47d23eb9d81c0352d342130287465"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/damage_check.py",
+          "sha256": "94e9ba5e587bfb7321e815cbb2eb79e69147d7923ea8ae5903b34704ecc2199c"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/dry_vocals.py",
+          "sha256": "bcd2cde74f00a35f5c6005dd6ee586a3f4efccd8df37c36c0923dcb13e34b6ac"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/export_trainset.py",
+          "sha256": "1b5a4bc457c715aa4c457edcd694c3e712bbaddfaec19240608c2491eb9397c2"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/gen_cut_page.py",
+          "sha256": "edc2943a72b767c3fee0a65858daf66358d25a63e19ce93ccb663733840d5c7c"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/gen_preview.py",
+          "sha256": "1231428fe1a85a887cfa5978c3bf12a78fbab67e88c8294b563c9ee68930fa3f"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/gen_preview_multi.py",
+          "sha256": "3543014f3db57503e3a71e4ec3bf1d4635b7d41227158ef2355b490f5ef561a4"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/gen_train_page.py",
+          "sha256": "a50c2458b04f7355b66278bda68e1458a273b0aeb27a17499dc22c3ecf062c9a"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/make_sep_packs.py",
+          "sha256": "f9f6a321b21e7ad2a863f4d40de36f056ff12f8e641862af4546a29f47e012e4"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/mark_review.py",
+          "sha256": "7f7ee2ad139410ae7f38411d27b4fbf090e0b18f0cbda90422c75bbe524f5e51"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/merge_trainset.py",
+          "sha256": "bf0f9a82ca652ee67e5363d1754f73494ce5481ca240c321c35a607f7d36a6f7"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/pick_damaged.py",
+          "sha256": "e4a2dc566712e619f1b95bf3a656e900463c944caa988f4190eb092be8a52f2e"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/profile_episode.py",
+          "sha256": "f9b05584239a343ba2b0a959543d703a5ea06583f11c502a296c2e0470bb80b6"
+        },
+        {
+          "path": "skills/anime-voice-line-extractor/scripts/stereo_probe.py",
+          "sha256": "f8890a95059c3971680f6b92fde10a27af8b66fef134a3079a78319bcfe8bb20"
+        }
+      ]
+    }
+  ]
+}

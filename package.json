@@ -1,8 +1,8 @@
 {
   "name": "dsh-advanced-training",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "DSH advanced training methods as standalone tools: tail-audit (keep-the-tail dataset health check, DDSP/GSV/RVC agnostic), GPT-SoVITS UNK-elimination text patch, and reference-free A/B evaluation (ASR CER + tail-hit). The methods were validated on a 383-line corpus: tail-keeping raised last-3-char articulation 33%->93% and cut PER 0.197->0.018.",
+  "description": "DeepseekHarness unified voice-model training entry: game/anime/own-audio materials, DDSP and GPT-SoVITS training backends, quality checks and model handoff. No inference, cover or publishing in the unified flow.",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
@@ -29,7 +29,8 @@
     }
   },
   "scripts": {
-    "test": "node test/smoke.mjs"
+    "test": "node test/smoke.mjs && node test/integration.mjs",
+    "test:local": "node test/local-pipeline.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.1"
@@ -45,6 +46,14 @@
     "cordis.patch.yml",
     "test/*.mjs",
     "README.md",
-    "CHANGELOG.md"
-  ]
+    "CHANGELOG.md",
+    "vendor/**",
+    "docs/*.md",
+    "training.example.json",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/InariNGT-Ofiicial/dsh-advanced-training.git"
+  }
 }
