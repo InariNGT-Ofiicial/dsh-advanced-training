@@ -1,0 +1,50 @@
+{
+  "name": "dsh-advanced-training",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DSH advanced training methods as standalone tools: tail-audit (keep-the-tail dataset health check, DDSP/GSV/RVC agnostic), GPT-SoVITS UNK-elimination text patch, and reference-free A/B evaluation (ASR CER + tail-hit). The methods were validated on a 383-line corpus: tail-keeping raised last-3-char articulation 33%->93% and cut PER 0.197->0.018.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "cordis",
+    "plugin",
+    "training",
+    "dataset-audit",
+    "gpt-sovits",
+    "ddsp-svc",
+    "rvc"
+  ],
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node test/smoke.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    }
+  },
+  "files": [
+    "src/*.js",
+    "py/*.py",
+    "cordis.patch.yml",
+    "test/*.mjs",
+    "README.md",
+    "CHANGELOG.md"
+  ]
+}

@@ -1,0 +1,39 @@
+# dsh-advanced-training bundle patch
+#
+# 本文件随插件包一起分发；`dsh plugin add` 之后，dsh 启动时会自动加载它。
+#
+# ★ 三条模型线的工程路径默认全留空：安装后由 src/config.js 自动发现
+#   - DDSP:   DSH_COVER_ROOT 下的 02_*（找 train_reflow.py），python 取其 env/
+#   - GSV:    D:/AI-Voice/02_GPT-SoVITS（含 .venv，faster-whisper 在里面）
+#   - RVC:    D:/WorkData/2026-10-19-03-29-21/rvc-voice-kit（rvcx.voice 工具链）
+#   发现不到时，跑 adv_doctor 会给出缺口清单。
+#
+# 环境变量（可选）：
+#   DSH_COVER_ROOT - AI-Song 根目录（找 DDSP 整合包）
+#   DSH_DDSP_DIR   - DDSP 工程根（显式指定，跳过自动发现）
+#   DSH_TRAIN_PYTHON - 科学计算 python（tail_audit 用；默认 DDSP env）
+#   DSH_GSV_ROOT   - GPT-SoVITS 工程根
+#   DSH_GSV_PYTHON - GSV venv 的 python（asr_cer 用，faster-whisper 所在）
+#   DSH_RVC_KIT    - rvc-voice-kit 目录
+#   DSH_RVC_ROOT   - RVC 上游引擎根（rvcx 换声时用；也可留在 rvcx.local.toml）
+#
+# 注意：patch 会**整行替换**目标行的 config，故此处列出本插件所需的全部键。
+- insert:
+    - id: advanced-training
+      name: 'dsh-advanced-training'
+      config:
+        # ── 三线工程（留空 = 自动发现）────────────────────────────────
+        songRoot: !!js process.env.DSH_COVER_ROOT ?? ''
+        ddspDir: !!js process.env.DSH_DDSP_DIR ?? ''
+        pyEnv: !!js process.env.DSH_TRAIN_PYTHON ?? ''
+        gsvDir: !!js process.env.DSH_GSV_ROOT ?? ''
+        gsvEnv: !!js process.env.DSH_GSV_PYTHON ?? ''
+        rvcKitDir: !!js process.env.DSH_RVC_KIT ?? ''
+        rvcRoot: !!js process.env.DSH_RVC_ROOT ?? ''
+
+        # ── ASR（验收 A/B 用，跑在 gsvEnv 里）─────────────────────────
+        asrModel: 'large-v3'
+        asrComputeType: 'float16'
+        asrCacheDir: ''
+
+        maxOutputChars: 6000
