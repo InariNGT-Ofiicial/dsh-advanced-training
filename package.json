@@ -1,8 +1,8 @@
 {
   "name": "dsh-advanced-training",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "DeepseekHarness unified voice-model training entry: game/anime/own-audio materials, DDSP and GPT-SoVITS training backends, quality checks and model handoff. No inference, cover or publishing in the unified flow.",
+  "description": "DeepseekHarness unified voice-model training entry: game/anime/own-audio materials, DDSP, GPT-SoVITS and RVC training backends, quality checks and model handoff. No inference, cover or publishing in the unified flow.",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
@@ -29,8 +29,9 @@
     }
   },
   "scripts": {
-    "test": "node test/smoke.mjs && node test/integration.mjs",
-    "test:local": "node test/local-pipeline.mjs"
+    "test": "node test/smoke.mjs && node test/integration.mjs && node test/rvc.mjs && node test/rvc-process-tree.mjs",
+    "test:local": "node test/local-pipeline.mjs",
+    "test:rvc:local": "node test/rvc-local.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.1"
@@ -47,7 +48,12 @@
     "test/*.mjs",
     "README.md",
     "CHANGELOG.md",
-    "vendor/**",
+    "vendor/**/*.js",
+    "vendor/**/*.py",
+    "vendor/**/*.json",
+    "vendor/**/*.md",
+    "vendor/**/*.txt",
+    "vendor/**/LICENSE",
     "docs/*.md",
     "training.example.json",
     "THIRD_PARTY_NOTICES.md"

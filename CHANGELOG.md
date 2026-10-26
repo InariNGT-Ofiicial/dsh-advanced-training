@@ -1,5 +1,15 @@
 # Changelog — dsh-advanced-training
 
+## 0.3.0 (2026-10-27)
+
+- 在同一个 `adv_train` 中接入 RVC v2：doctor、scan、build、preprocess、run、index、status、stop、register，主工具数保持 7 个。
+- 固定内置 rvc-voice-kit 训练脚本；使用已安装的 RVC 引擎、独立 Python 和权重，不分发环境或模型。
+- 出料、特征、训练与索引为持久后台任务，记录 jobId、状态、日志和回执；只停止本入口拥有的进程树。
+- Windows 独立 Job Object 在协调进程异常退出时清理其子进程树，结合心跳核对进程状态；训练与归档共用实验锁。
+- 增加实验身份、语料指纹、显式续训和不覆盖音色包保护，逐阶段回读音频、特征、模型和索引。
+- 交接模型、added 索引、配置、训练清单、日志和 SHA-256，固定保留尚未通过音质验收的标记。
+- 本机使用 4 条合成语料完成真实 48k GPU 训练、续训至第 2 轮、索引（796 向量）、归档与停止验证；不将短流程验证等同于真实音色质量验收。
+
 ## 0.2.0 (2026-10-26)
 
 - 新增统一入口 adv_train_catalog / adv_train_plan / adv_train。

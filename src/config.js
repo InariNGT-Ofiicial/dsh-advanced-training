@@ -11,6 +11,7 @@
  */
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const env = (k) => process.env[k] || '';
 
@@ -38,6 +39,7 @@ export function resolveConfig(cfg = {}) {
     const cand = [
       c.pyEnv,
       env('DSH_TRAIN_PYTHON'),
+      c.rvcEnv || c.pipelines?.rvc?.python,
       c.ddspDir ? join(c.ddspDir, 'env/python.exe') : '',
       'D:/AI-Song/01_人声分离_MSST-GUI/env/python.exe',
     ].filter(Boolean);
@@ -65,10 +67,8 @@ export function resolveConfig(cfg = {}) {
   }
 
   // ── RVC 线（rvc-voice-kit 工具链 + 上游引擎根）─────────────────────
-  c.rvcKitDir = c.rvcKitDir || env('DSH_RVC_KIT')
-    || (existsSync('D:/WorkData/2026-10-19-03-29-21/rvc-voice-kit')
-      ? 'D:/WorkData/2026-10-19-03-29-21/rvc-voice-kit' : '');
-  c.rvcRoot = c.rvcRoot || env('DSH_RVC_ROOT') || '';   // 上游 RVC 引擎（setup.ps1 -Root）
+  c.rvcKitDir = c.rvcKitDir || env('DSH_RVC_KIT') || fileURLToPath(new URL('../vendor/rvc-voice-kit/', import.meta.url));
+  c.rvcRoot = c.rvcRoot || c.pipelines?.rvc?.root || env('DSH_RVC_ROOT') || '';   // RVC 安装根（setup.ps1 -Root）
   if (c.rvcKitDir && !c.rvcRoot) {
     // rvcx.local.toml 里记了上游根；只做「有没有」级别的提示，不解析 toml
     c.rvcRootHint = existsSync(join(c.rvcKitDir, 'rvcx.local.toml')) ? 'rvcx.local.toml' : '';

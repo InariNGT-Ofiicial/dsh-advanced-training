@@ -28,6 +28,22 @@
       "sepPython": "",
       "sepConfig": "",
       "sepCheckpoint": ""
+    },
+    "rvc": {
+      "root": "",
+      "repo": "",
+      "python": "",
+      "workRoot": "",
+      "ffmpegDir": "",
+      "modelDir": "",
+      "expName": "my-rvc-voice",
+      "sampleRate": "48k",
+      "f0Method": "rmvpe",
+      "epochs": 150,
+      "batchSize": 4,
+      "saveEvery": 10,
+      "processes": 2,
+      "minSlices": 1
     }
   }
 }

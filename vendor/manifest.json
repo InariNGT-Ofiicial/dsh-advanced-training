@@ -317,6 +317,39 @@
           "sha256": "f8890a95059c3971680f6b92fde10a27af8b66fef134a3079a78319bcfe8bb20"
         }
       ]
+    },
+    {
+      "id": "rvc-voice-kit",
+      "repository": "https://github.com/InariNGT-Ofiicial/rvc-voice-kit",
+      "commit": "6134032d160336e9a425450382529cec98585d38",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "cf6e1c2997730a03108ffa2e3fa5d3a41d152d6092c741eb72131c5774c263e6"
+        },
+        {
+          "path": "README.md",
+          "sha256": "0f6fe50076a96f8a445272570757fd0798ce112a4ad6fbcaa80709429e3086c0"
+        },
+        {
+          "path": "rvcx/__init__.py",
+          "sha256": "361cdd94bbc6ad3a97a9d3ff7b4e3bbc12923a2c619f5a147d87079a8552aa4b"
+        },
+        {
+          "path": "rvcx/paths.py",
+          "sha256": "c5809990f2216fad65e0501bdf38f7ecd33281f223b2cfeca4d1680dc51eceb3"
+        },
+        {
+          "path": "rvcx/voice.py",
+          "sha256": "1e75108397af2b055fdd8f7b0b8c8e384015728a826842ffba3d79147ae29625"
+        },
+        {
+          "path": "scripts/train/p1_run.py",
+          "sha256": "9c9454dda326bc19d30d4aa03b5cd90ed93ed6487320e4701b7b261f0cc45c83",
+          "patchedSha256": "41be371b84354f79d92c8eb9cc1062dc95f12b7f0be06bf7f5e1169b919103d6",
+          "patch": "An explicit --resume bypasses the old exported-model shortcut; the unified adapter validates experiment identity and artifacts before/after execution."
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,43 @@
+MIT License
+
+Copyright (c) 2026 rvc-voice-kit contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+第三方组件与素材说明
+====================
+
+1. 上游换声引擎
+   Retrieval-based-Voice-Conversion-WebUI (RVC), MIT License,
+   https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI
+   本仓库**不包含**其源码，由 setup.ps1 按固定 commit 拉取。
+
+2. 模型权重
+   本仓库**不包含**任何 .pth / .index 权重，`models/` 下只有索引与校验和。
+   若要分发音色模型，其合法性取决于训练数据的来源与授权，
+   须由分发者自行确认，不在本许可证授权范围内。
+
+3. 音频素材
+   本仓库**不包含**任何音频。实验中使用的台词、歌声与角色均为
+   各自权利人的作品，仅用于个人研究性评测。
+
+4. 评测依赖
+   faster-whisper (MIT)、pypinyin (MIT)、librosa (ISC) 等，各自遵循其原始许可证。

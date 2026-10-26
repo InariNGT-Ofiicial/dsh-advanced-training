@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { apply as applyDdsp } from '../vendor/ddsp-pipeline/src/index.js';
 import { apply as applyGsv } from '../vendor/anime-voice/plugins/tts-train-pipeline/src/index.js';
 import { createAnimeBackend } from './anime-backend.js';
+import { createRvcBackend } from './rvc-backend.js';
 
 const MANIFEST = JSON.parse(readFileSync(new URL('../vendor/manifest.json', import.meta.url), 'utf8'));
 const ACTIONS = {
@@ -27,6 +28,7 @@ export function validate(schema, value, path = 'params') {
   if (!matches) return [`${path} must be ${t}`];
   if (schema.enum && !schema.enum.includes(value)) errors.push(`${path} must be one of ${schema.enum.join(', ')}`);
   if (typeof value === 'string' && schema.minLength && value.length < schema.minLength) errors.push(`${path} must not be empty`);
+  if (typeof value === 'string' && schema.pattern && !new RegExp(schema.pattern).test(value)) errors.push(`${path} does not match ${schema.pattern}`);
   if (t === 'object') {
     for (const name of schema.required || []) if (!(name in value)) errors.push(`${path}.${name} is required`);
     for (const [key, v] of Object.entries(value)) {
@@ -63,7 +65,7 @@ async function capture(apply, ctx, config, prefix, actions) {
 
 export function backendConfig(config, route) {
   const common = {};
-  const keys = route === 'ddsp'
+  const keys = route === 'rvc' ? ['rvcRoot', 'rvcRepo', 'rvcEnv', 'rvcFfmpegDir', 'workRoot', 'ffmpeg', 'expName'] : route === 'ddsp'
     ? ['songRoot', 'trainRoot', 'voiceLibDir', 'toolsDir', 'ddspDir', 'ddspEnv', 'ffmpeg', 'expName', 'timeoutMs', 'maxOutputChars']
     : ['songRoot', 'workRoot', 'gsvDir', 'gsvEnv', 'ffmpeg', 'expName', 'lang', 'asrCacheDir', 'timeoutMs', 'maxOutputChars'];
   for (const key of keys) if (config[key] !== undefined && config[key] !== '') common[key] = config[key];
@@ -75,6 +77,7 @@ export async function createTrainingHub(ctx, config = {}) {
   const backends = new Map([
     ['ddsp', await capture(applyDdsp, ctx, backendConfig(config, 'ddsp'), 'train', ACTIONS.ddsp)],
     ['gsv', await capture(applyGsv, ctx, backendConfig(config, 'gsv'), 'tts', ACTIONS.gsv)],
+    ['rvc', createRvcBackend(backendConfig(config, 'rvc'))],
     ['anime', createAnimeBackend(config.pipelines?.anime || {})],
   ]);
   const receiptDir = resolve(config.receiptDir || join(config.workRoot || process.cwd(), 'advanced-training', 'receipts'));
@@ -89,7 +92,7 @@ export async function createTrainingHub(ctx, config = {}) {
         .map(([a, d]) => ({ action: a, backendTool: d.name, description: d.description, parameters: d.parameters })) });
     }
     return reply(true, routes.map(r => `${r.route}: ${r.actions.map(a => a.action).join(' / ')}`).join('\n')
-      + '\n通过 adv_train 调用；训练与素材步骤接入，推理、翻唱和发布不接入。RVC 保留原有质量检查能力，未接入训练编排。',
+      + '\n通过 adv_train 调用 DDSP/GPT-SoVITS/RVC 训练与素材步骤；推理、翻唱和发布不接入。RVC 后台阶段必须用返回的 jobId 查询 status。',
     { stage: 'catalog', routes, sources: MANIFEST.sources.map(({ files, ...s }) => s), receiptDir });
   };
   const execute = async ({ route, action, params = {}, dryRun = false } = {}) => {
@@ -133,7 +136,7 @@ export async function createTrainingHub(ctx, config = {}) {
 
 export function trainingPlan(args = {}) {
   const { route, sourceType = 'audio', source, speaker = '', linesFile = '', outDir = '' } = args;
-  if (!['ddsp', 'gsv'].includes(route) || !source || !['audio', 'game', 'anime'].includes(sourceType)) return reply(false, '需要 route=ddsp/gsv、source 和 sourceType=audio/game/anime。');
+  if (!['ddsp', 'gsv', 'rvc'].includes(route) || !source || !['audio', 'game', 'anime'].includes(sourceType)) return reply(false, '需要 route=ddsp/gsv/rvc、source 和 sourceType=audio/game/anime。');
   const steps = [];
   const add = (r, action, params, note = '') => steps.push({ tool: 'adv_train', route: r, action, params, note });
   add(route, 'doctor', {}, '只检查选择的训练路线；按报告补齐工程、Python、依赖和预训练权重。');
@@ -155,6 +158,21 @@ export function trainingPlan(args = {}) {
       add('anime', 'bridge', { input: '<refine 输出的 lines.jsonl>', out: '<新建的训练台词.jsonl>', ...(speaker ? { speaker } : {}) }, '把番剧 file 字段转为训练器的 voice_path，保留原台词；读取桥接后的路径。');
       lines = '<bridge 返回的训练台词.jsonl>';
     }
+  }
+  if (route === 'rvc') {
+    if (sourceType === 'game') input = '<解包后人工确认的目标角色语音目录>';
+    add(route, 'scan', { input }, '仅接入单个已确认角色的语音，不需要台词标注。');
+    steps.push({ tool: 'adv_tail_audit', params: { dir: input }, note: '训练前检查原始语料，损坏或切尾需要回源整理。' });
+    add(route, 'build', { input }, '后台原生预处理，检查目标采样率与 16k 配对切片。');
+    add(route, 'status', { jobId: '<build 返回的 jobId>' }, '等该阶段 succeeded 后继续。');
+    add(route, 'preprocess', {}, '后台提取 F0、768 维特征和训练清单。');
+    add(route, 'status', { jobId: '<preprocess 返回的 jobId>' }, '等特征/清单产物核查成功后继续。');
+    add(route, 'run', {}, '后台训练；已有模型/检查点需要显式 resume=true 才续训。');
+    add(route, 'status', { jobId: '<run 返回的 jobId>' }, '达到目标 epoch 并核查小模型、G/D 检查点；不代表音质验收。');
+    add(route, 'index', {}, '构建并验证 added 检索索引；不使用索引时可明确跳过。');
+    add(route, 'status', { jobId: '<index 返回的 jobId>' });
+    add(route, 'register', speaker ? { role: speaker } : {}, '归档模型、索引、配置、清单、日志与哈希，不覆盖已有音色包。');
+    return reply(true, `【统一训练计划 · RVC / ${sourceType}】\n${steps.map((s, i) => `${i + 1}. ${s.tool}${s.action ? ` ${s.route}/${s.action}` : ''} ${s.note || ''}`).join('\n')}\n尖括号需替换为实际返回值；计划没有执行任何步骤。`, { stage: 'plan', executed: false, route, sourceType, steps, scope: 'RVC v2 单角色训练与模型交接，不调用推理、翻唱或发布。' });
   }
   if (route === 'ddsp') {
     add(route, 'scan', { input });
@@ -179,8 +197,8 @@ export async function registerTrainingHub(ctx, config = {}) {
   const hub = await createTrainingHub(ctx, config);
   const tools = ctx.get('tools');
   const output = { schema: { type: 'object', properties: { ok: { type: 'boolean' }, rendered: { type: 'string' }, stage: { type: 'string' } }, required: ['ok', 'rendered'] }, render: (_a, v) => [{ type: 'text', text: String(v?.rendered ?? '(无输出)') }] };
-  tools.register({ name: 'adv_train_catalog', description: '统一训练入口：发现内置 DDSP、GPT-SoVITS 与番剧素材后端；返回真实可调用操作及其参数 schema。无需分别安装训练插件。不包含推理/翻唱/发布。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'anime'] }, action: str('可选：只看某个操作的参数') }), output, execute: async (a = {}) => hub.catalog(a) });
-  tools.register({ name: 'adv_train_plan', description: '从游戏、番剧或自备单人语音集制定逐步训练流程；区分 DDSP 与 GPT-SoVITS 的数据、标注和模型格式。本工具只制定计划；真实执行使用 adv_train。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv'] }, sourceType: { type: 'string', enum: ['audio', 'game', 'anime'] }, source: str('本地素材路径'), speaker: str('目标角色'), linesFile: str('已有带台词 JSONL，可省略'), outDir: str('解包或番剧提取的新输出目录') }, ['route', 'source']), output, execute: async (a = {}) => trainingPlan(a) });
-  tools.register({ name: 'adv_train', description: '统一执行已接入的训练/素材操作。先用 adv_train_catalog 查询 route/action 的真实 params，再调用。route=ddsp/gsv 管训练，anime 管摘句/整集重建/台词桥接。返回原始后端结果与持久回执；run 只表示启动，需 status 核查。禁止推理、翻唱和发布操作。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'anime'] }, action: str('catalog 中的操作名'), params: { type: 'object', additionalProperties: true, description: '严格按所选操作的参数 schema 填写' }, dryRun: { type: 'boolean', description: '只检查参数并预览派发，不执行，也不验证依赖/产物' } }, ['route', 'action']), output, execute: hub.execute });
+  tools.register({ name: 'adv_train_catalog', description: '统一训练入口：发现内置 DDSP、GPT-SoVITS、RVC 与番剧素材后端；返回真实可调用操作及其参数 schema。无需分别安装训练插件。不包含推理/翻唱/发布。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'rvc', 'anime'] }, action: str('可选：只看某个操作的参数') }), output, execute: async (a = {}) => hub.catalog(a) });
+  tools.register({ name: 'adv_train_plan', description: '从游戏、番剧或自备单人语音集制定逐步训练流程；区分 DDSP、GPT-SoVITS 与 RVC 的数据、标注和模型格式。本工具只制定计划；真实执行使用 adv_train。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'rvc'] }, sourceType: { type: 'string', enum: ['audio', 'game', 'anime'] }, source: str('本地素材路径'), speaker: str('目标角色'), linesFile: str('已有带台词 JSONL，可省略'), outDir: str('解包或番剧提取的新输出目录') }, ['route', 'source']), output, execute: async (a = {}) => trainingPlan(a) });
+  tools.register({ name: 'adv_train', description: '统一执行已接入的训练/素材操作。先用 adv_train_catalog 查询 route/action 的真实 params，再调用。route=ddsp/gsv/rvc 管训练，anime 管摘句/整集重建/台词桥接。返回原始后端结果与持久回执；run 只表示启动，需 status 核查。禁止推理、翻唱和发布操作。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'rvc', 'anime'] }, action: str('catalog 中的操作名'), params: { type: 'object', additionalProperties: true, description: '严格按所选操作的参数 schema 填写' }, dryRun: { type: 'boolean', description: '只检查参数并预览派发，不执行，也不验证依赖/产物' } }, ['route', 'action']), output, execute: hub.execute });
   return hub;
 }

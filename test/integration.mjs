@@ -32,7 +32,7 @@ try {
   const hub = await createTrainingHub(ctx, { workRoot: root, songRoot: root, pipelines: { gsv: { version: 'v2' } } });
   const cat = hub.catalog();
   assert(cat.ok);
-  assert.deepEqual(cat.routes.map(r => r.route), ['ddsp', 'gsv', 'anime']);
+  assert.deepEqual(cat.routes.map(r => r.route), ['ddsp', 'gsv', 'rvc', 'anime']);
   for (const route of cat.routes) assert(!route.actions.some(a => /infer|cover|publish/.test(a.action)));
   assert(hub.catalog({ route: 'gsv', action: 'build' }).routes[0].actions[0].parameters.properties.lines);
   assert(!hub.catalog({ route: 'gsv', action: 'infer' }).ok);
@@ -41,7 +41,7 @@ try {
   assert(dry.ok && dry.executed === false);
   assert.equal(existsSync(join(root, 'advanced-training')), before, 'dry-run must not create receipts');
   for (const request of [
-    { route: 'rvc', action: 'run' },
+    { route: 'unknown', action: 'run' },
     { route: 'gsv', action: 'infer' },
     { route: 'ddsp', action: 'build', params: { input: root } },
     { route: 'gsv', action: 'build', params: { input: root } },
@@ -65,7 +65,7 @@ try {
   const guarded = await wrongRoot.execute({ route: 'gsv', action: 'patch_text', params: { apply: true } });
   assert(!guarded.ok && !guarded.executed && guarded.stage === 'configuration');
   for (const sourceType of ['audio', 'game', 'anime']) {
-    for (const route of ['ddsp', 'gsv']) {
+    for (const route of ['ddsp', 'gsv', 'rvc']) {
       const result = await registered.get('adv_train_plan').execute({ route, sourceType, source: '/fixture', speaker: '角色' });
       assert(result.ok && !result.executed);
       assert(result.steps.some(s => s.route === route && s.action === 'run'));

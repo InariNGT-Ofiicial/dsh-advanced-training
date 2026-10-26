@@ -1,6 +1,6 @@
 /**
  * dsh-advanced-training: unified material, dataset, training and model-handoff entry.
- * Built-in DDSP/GPT-SoVITS/anime backends retain their own formats and engines.
+ * Built-in DDSP/GPT-SoVITS/RVC/anime backends retain their own formats and engines.
  * Original quality tools remain compatible; inference/cover/publishing are excluded
  * from the new training entry.
  */
@@ -90,11 +90,12 @@ export async function apply(ctx, cfg) {
       }
 
       // RVC：工具链
-      L.push('', '── RVC / 换声 ──');
+      L.push('', '── RVC / 训练工具链 ──');
       L.push(`  工具链 rvcKitDir: ${c.rvcKitDir || '(未发现)'}`);
       ok.rvc = !!(c.rvcKitDir && existsSync(join(c.rvcKitDir, 'rvcx', 'voice.py')));
       L.push(`  rvcx.voice: ${ok.rvc ? '✅' : '❌'}`);
-      L.push(`  上游引擎根: ${c.rvcRoot || c.rvcRootHint || '(未配置——换声时由 rvcx.local.toml 解析)'}`);
+      L.push(`  上游引擎根: ${c.rvcRoot || c.rvcRootHint || '(未配置；请填写 pipelines.rvc)'}`);
+      L.push('  本检查仅核对工具链；训练前调用 adv_train route=rvc action=doctor。');
 
       const all = ok.py && ok.gsv && ok.fw && ok.rvc;
       L.push('', all ? '✅ 三线齐备' : '⚠️ 有缺口（不影响可用部分的工具；缺口项会给出补法）');

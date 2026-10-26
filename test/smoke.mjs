@@ -58,11 +58,11 @@ for (const [n, def] of registered) {
 // py 脚本静态健康：语法可编译（不依赖 numpy 在场）
 const here = fileURLToPath(new URL('.', import.meta.url));
 const root = join(here, '..');
-for (const script of ['tail_audit.py', 'asr_cer.py', 'patch_unk.py']) {
+for (const script of ['tail_audit.py', 'asr_cer.py', 'patch_unk.py', 'rvc_route.py']) {
   const out = execFileSync(process.env.TEST_PYTHON || 'python', ['-c', `import ast,sys;ast.parse(open(sys.argv[1],encoding="utf-8").read());print("ok")`, join(root, 'py', script)],
     { encoding: 'utf8' });
   assert.ok(out.includes('ok'), `${script} 语法不过`);
 }
 
-console.log(`✅ smoke: ${EXPECTED.length} 个工具契约 + 3 个 py 脚本语法通过`);
+console.log(`✅ smoke: ${EXPECTED.length} 个工具契约 + 4 个 py 脚本语法通过`);
 console.log('   ' + [...registered.keys()].join(', '));
