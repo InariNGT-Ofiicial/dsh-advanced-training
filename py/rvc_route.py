@@ -14,6 +14,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
+from rvc_resume import backup_resume, guarded_runner
 
 AUDIO = {'.wav', '.flac', '.ogg', '.opus', '.mp3', '.m4a', '.aif', '.aiff'}
 KIT = Path(__file__).resolve().parents[1] / 'vendor/rvc-voice-kit'
@@ -310,6 +311,14 @@ def native_job(spec):
     action = spec['action']
     require(action in ['build', 'preprocess', 'run', 'index'], '不支持的后台阶段。')
     work.mkdir(parents=True, exist_ok=True)
+    last_progress = 0
+    def progress(**extra):
+        nonlocal last_progress
+        state = read_json(spec['statePath'], {})
+        changed = any(state.get(k) != v for k, v in extra.items())
+        if changed or time.time() - last_progress > 2:
+            write_json(spec['statePath'], {**state, **extra, 'heartbeatAt': time.time()})
+            last_progress = time.time()
     with experiment_lock(logdir, spec['jobId']):
         minimum = int(p.get('minSlices') or c.get('minSlices', 1))
         require(minimum >= 1, 'minSlices 必须大于 0。')
@@ -333,6 +342,11 @@ def native_job(spec):
             existing = list(logdir.glob('G_*.pth')) + list(logdir.glob('D_*.pth')) + model_candidates(repo, exp)
             require(not existing or p.get('resume'), '已有检查点或小模型，续训请显式 resume=true；不会覆盖重开。')
             if (logdir/'config.json').is_file(): require(read_json(logdir/'config.json')['data']['sampling_rate'] == (48000 if sr == '48k' else 40000), '已有训练配置采样率不同。')
+        backup_dir, resume_proof_path, resume_proof = None, None, None
+        target_epoch = int(p.get('epochs') or c.get('epochs', 150))
+        if action == 'run' and p.get('resume'):
+            backup_dir, backup = backup_resume(logdir, work, repo, spec['jobId'], target_epoch, progress)
+            runner, resume_proof_path = guarded_runner(repo, Path(spec['statePath']).parent, backup_dir, backup, Path(__file__).parent)
         steps = {'build': 'prep', 'preprocess': 'f0,feat,list', 'run': 'train', 'index': 'index'}[action]
         args = [sys.executable, str(KIT/'scripts/train/p1_run.py'), '--exp', exp, '--steps', steps, '--sr', sr, '--version', 'v2',
                 '--min-slices', str(minimum), '--np', str(c.get('processes', 2)), '--f0method', c.get('f0Method', 'rmvpe'),
@@ -340,6 +354,12 @@ def native_job(spec):
                 '--se', str(p.get('saveEvery') or c.get('saveEvery', 10))]
         if data: args += ['--data', str(Path(data).resolve())]
         if p.get('resume'): args += ['--resume']
+        if resume_proof_path:
+            args = [sys.executable, '-u', str(runner), '-e', exp, '-sr', sr, '-f0', '1',
+                    '-bs', str(p.get('batchSize') or c.get('batchSize', 4)), '-g', '0',
+                    '-te', str(target_epoch), '-se', str(p.get('saveEvery') or c.get('saveEvery', 10)),
+                    '-pg', f'assets/pretrained_v2/f0G{sr}.pth', '-pd', f'assets/pretrained_v2/f0D{sr}.pth',
+                    '-l', '1', '-c', '0', '-sw', '1', '-v', 'v2']
         environment = {**os.environ, 'RVCX_ROOT': str(work), 'RVCX_REPO': str(repo), 'RVCX_PY': sys.executable, 'RVCX_WORK': str(work), 'RVCX_MODELS': c['modelDir'], 'RVCX_DATASET': str(Path(data).resolve().parent) if data else str(work/'dataset'), 'CUDA_VISIBLE_DEVICES': '0'}
         log = Path(spec['logPath'])
         if Path(spec['stopPath']).exists(): return {'ok': False, 'state': 'stopped', 'stage': action}
@@ -347,12 +367,17 @@ def native_job(spec):
             child = subprocess.Popen(args, cwd=repo, env=environment, stdout=stream, stderr=subprocess.STDOUT,
                                      creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), start_new_session=os.name != 'nt')
             tree.attach(child)
-            heartbeat = 0
+            launched_at = time.time()
             while child.poll() is None:
-                if time.time() - heartbeat > 2:
-                    state = read_json(spec['statePath'], {})
-                    write_json(spec['statePath'], {**state, 'heartbeatAt': time.time()})
-                    heartbeat = time.time()
+                if resume_proof_path:
+                    resume_proof = read_json(resume_proof_path, {})
+                    if resume_proof.get('confirmed'):
+                        progress(phase='training', resume=resume_proof)
+                    elif time.time() - launched_at > 120:
+                        tree.terminate(child)
+                        child.wait(timeout=30)
+                        raise ValueError(f'120 秒内未确认 G/D 和优化器恢复，已停止；不会继续未知起点的训练。备份：{backup_dir}')
+                progress()
                 if Path(spec['stopPath']).exists():
                     tree.terminate(child)
                     child.wait(timeout=30)
@@ -365,13 +390,18 @@ def native_job(spec):
         elif action == 'preprocess': proof = feature_proof(logdir, repo, sr)
         elif action == 'index': proof = index_proof(logdir)
         else:
+            if resume_proof_path:
+                resume_proof = read_json(resume_proof_path, {})
+                require(resume_proof.get('confirmed') and resume_proof.get('jobId') == spec['jobId']
+                        and resume_proof.get('fromEpoch') == backup['fromEpoch'], f'没有本次 G/D 实际恢复证明，不能认定续训成功。备份：{backup_dir}')
             models = model_candidates(repo, exp)
             require(models, '训练进程结束但没有导出本实验小模型。')
             proof = inspect_model(models[-1], sr)
             epoch = int(re.search(r'_e(\d+)_s', models[-1].name)[1])
             require(epoch >= int(p.get('epochs') or c.get('epochs', 150)), '模型导出 epoch 未达到请求目标，不能判训练完成。')
             require(list(logdir.glob('G_*.pth')) and list(logdir.glob('D_*.pth')), '缺少可续训的 G/D 检查点。')
-        return {'ok': True, 'state': 'succeeded', 'stage': action, 'artifacts': proof, 'qualityAccepted': False}
+        return {'ok': True, 'state': 'succeeded', 'stage': action, 'artifacts': proof, 'qualityAccepted': False,
+                **({'backupDir': str(backup_dir), 'resume': resume_proof} if resume_proof_path else {})}
 
 
 def main():
@@ -385,7 +415,7 @@ def main():
         write_json(spec['statePath'], {**base, 'ok': True, 'state': 'running'})
         try: result = native_job(spec)
         except Exception as e: result = {'ok': False, 'state': 'failed', 'error': str(e)}
-        write_json(spec['statePath'], {**base, **result, 'finishedAt': time.time()})
+        write_json(spec['statePath'], {**read_json(spec['statePath'], {}), **base, **result, 'finishedAt': time.time()})
     else:
         spec = json.loads(a.request)
         try:

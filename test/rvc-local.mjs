@@ -1,6 +1,7 @@
 /** Explicit local RVC test: synthetic audio, unique experiment, real training. */
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, createReadStream } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { createTrainingHub } from '../src/training-hub.js';
 
@@ -31,7 +32,7 @@ const hub = await createTrainingHub({ logger: { info() {}, warn() {}, error() {}
   workRoot: work,
   pipelines: { rvc: { root, python, workRoot: work, ffmpegDir: process.env.TEST_RVC_FFMPEG_DIR || '', expName: exp, sampleRate: '48k', f0Method: 'pm', epochs: 1, batchSize: 1, saveEvery: 1, minSlices: 1, processes: 2 } },
 });
-const report = { checked_date: '2026-10-27', experiment: exp, input: 'four synthetic 48kHz mono harmonic/noise WAV files', inferencePerformed: false, subjectiveQualityAccepted: false, stages: [] };
+const report = { checked_date: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(new Date()), experiment: exp, input: 'four synthetic 48kHz mono harmonic/noise WAV files', inferencePerformed: false, subjectiveQualityAccepted: false, stages: [] };
 const save = () => {
   if (process.env.TEST_RVC_REPORT) {
     mkdirSync(join(resolve(process.env.TEST_RVC_REPORT), '..'), { recursive: true });
@@ -48,7 +49,7 @@ async function wait(start, name, acceptFailure = false) {
     const r = await call('status', { expName: start.expName, jobId: start.jobId });
     if (!['queued', 'running'].includes(r.state)) {
       if (!acceptFailure) assert(r.ok && r.state === 'succeeded', r.rendered);
-      report.stages.push({ name, state: r.state, jobId: r.jobId, artifacts: r.artifacts, error: r.error, logPath: r.logPath });
+      report.stages.push({ name, state: r.state, jobId: r.jobId, artifacts: r.artifacts, error: r.error, logPath: r.logPath, backupDir: r.backupDir, resume: r.resume });
       save(); console.log(`${name}: ${r.state}`);
       return r;
     }
@@ -61,14 +62,26 @@ try {
   r = await call('scan', { input }); assert(r.ok && r.count === 4, r.rendered); console.log('RVC scan passed');
   await wait(await call('build', { input }), 'build');
   await wait(await call('preprocess'), 'preprocess');
-  await wait(await call('run', { epochs: 1, batchSize: 1, saveEvery: 1 }), 'train-one-epoch');
-  const refused = await wait(await call('run', { epochs: 2 }), 'reject-implicit-overwrite', true);
+  const missing = await wait(await call('run', { epochs: 3, resume: true }), 'reject-resume-without-gd', true);
+  assert(!missing.ok && missing.error.includes('续训缺少 G_'));
+  await wait(await call('run', { epochs: 2, batchSize: 1, saveEvery: 1 }), 'train-two-epochs');
+  const refused = await wait(await call('run', { epochs: 3 }), 'reject-implicit-overwrite', true);
   assert(!refused.ok && refused.state === 'failed' && refused.error.includes('resume=true'));
-  await wait(await call('run', { epochs: 2, batchSize: 1, saveEvery: 1, resume: true }), 'resume-to-two-epochs');
+  const resumed = await wait(await call('run', { epochs: 3, batchSize: 1, saveEvery: 1, resume: true }), 'resume-from-two-to-three');
+  assert(resumed.resume.confirmed && resumed.resume.fromEpoch === 2 && resumed.resume.targetEpoch === 3);
+  assert(resumed.rendered.includes('恢复已确认'));
+  const backup = JSON.parse(readFileSync(join(resumed.backupDir, 'backup.json'), 'utf8'));
+  assert(backup.complete && backup.fromEpoch === 2 && backup.files.length === 4);
+  for (const entry of backup.files) {
+    const hash = createHash('sha256');
+    for await (const chunk of createReadStream(join(resumed.backupDir, entry.file))) hash.update(chunk);
+    assert.equal(hash.digest('hex'), entry.sha256);
+  }
+  report.resumeBackupVerified = true;
   await wait(await call('index'), 'index');
   r = await call('register', { role: '合成语料流程测试' }); assert(r.ok, r.rendered);
   const manifest = JSON.parse(readFileSync(r.manifest, 'utf8'));
-  assert.equal(manifest.route, 'rvc'); assert(manifest.index.vectors > 0); assert.equal(manifest.model.epochs, 2);
+  assert.equal(manifest.route, 'rvc'); assert(manifest.index.vectors > 0); assert.equal(manifest.model.epochs, 3);
   assert.equal(manifest.qualityAccepted, false);
   report.register = { outDir: r.outDir, manifest: r.manifest, artifacts: r.artifacts, epoch: manifest.model.epochs, indexVectors: manifest.index.vectors };
   const overwrite = await call('register', { outDir: r.outDir }); assert(!overwrite.ok && overwrite.rendered.includes('不覆盖'));

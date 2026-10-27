@@ -1,4 +1,4 @@
-# RVC 路线（0.3.0）
+# RVC 路线（0.3.1）
 
 主插件调用固定版本 rvc-voice-kit 的训练脚本，训练计算由本机 RVC 引擎完成。RVC 接收已确认的单角色音频，不需要文本；游戏解包和番剧摘句得到的干净角色目录、自备语音目录都可以作为输入。角色混杂、配乐、人声重叠或切尾仍需回源整理和回听。
 
@@ -88,11 +88,23 @@ RVC 引擎需包含：
 
 同一引擎实验由锁保护，避免本入口同时运行多个阶段；它不会接管已有外部训练进程。实验名只允许英文、数字、下划线与短横线，最多 64 字符。请为每个角色与数据版本使用新实验名，不与 WebUI 或其他训练任务共用实验。
 
-已有出料仅当 `build resume=true` 且原始语料 SHA-256 指纹一致时复用。已有模型或 G/D 检查点会拒绝普通 run，续训需显式 `resume=true`；epochs 是目标总轮次，实际恢复位置以原生训练日志为准。已有音色包拒绝覆盖，更新模型应指定新的 outDir。
+已有出料仅当 `build resume=true` 且原始语料 SHA-256 指纹一致时复用。已有模型或 G/D 检查点会拒绝普通 run；续训需显式 `resume=true`，且必须有编号和内部轮次对应的最新成对 G/D、优化器状态、配置与清单。只有导出的小模型不等于具备续训材料。
+
+0.3.1 会先复制到 `<workRoot>/rvc/<expName>/checkpoint-backups/<UTC时间>-<jobId>/`，要求该位置位于引擎 `logs` 之外，保存 G/D、config.json、filelist.txt 和 backup.json。备份重新核验大小、SHA-256 和源文件稳定性，确认后才启动训练；空间不足、文件不配对或无有效轮次时直接失败。每次备份独立保留，不覆盖、不自动清理旧备份；大型 G/D 需要预留相应空间。
+
+续训从已核验的快照读取，严格加载 G、D 及两份优化器状态。不会调用上游的“恢复失败后加载预训练底模”兜底；任一加载失败就结束该任务。120 秒内没有收到完整恢复证明也会停止。status 显示备份目录、检查点轮次、目标总轮次和“恢复已确认/待确认”；该次 jobs 目录保留 resume-proof.json。epochs 必须大于已有轮次。原生引擎可能重跑检查点所对应的一轮，恢复证据中的 fromEpoch 是已加载状态的轮次。
+
+为避免修改已安装引擎，本入口冻结该次 train/train.py 入口到任务目录并装载严格恢复钩子；只接受已检查的 utils.load_checkpoint / latest_checkpoint_path 调用布局。其他分支会拒绝无保护续训，不能据此宣称兼容所有 Applio/RVC 版本。已有音色包拒绝覆盖，更新模型应指定新的 outDir。
 
 ```json
 {"route":"rvc","action":"run","params":{"expName":"role-a","epochs":200,"resume":true}}
 ```
+
+### Applio 界面提醒
+
+收到过“点开始训练后旧 G/D 被清理，实际从第 1 轮重跑”的反馈，未取得该次安装的版本与选项记录。核对 Applio 提交 [fb427aa](https://github.com/IAHispano/Applio/tree/fb427aa388a954a387da7034fbbc08313f7ffe8c)：[界面的 Fresh Training 选项](https://github.com/IAHispano/Applio/blob/fb427aa388a954a387da7034fbbc08313f7ffe8c/tabs/train/train.py#L713) 默认关闭；打开后，[训练入口会删除旧 G/D 等产物](https://github.com/IAHispano/Applio/blob/fb427aa388a954a387da7034fbbc08313f7ffe8c/rvc/train/train.py#L278)。不能将其概括为所有版本每次点击开始都会删除。
+
+在 Applio 界面继续训练时，先把成对 G/D、配置与清单另存到 logs 外，核对 Fresh Training / cleanup 关闭，检查加载记录与起始轮次后再长时间运行。本插件的自动备份只在本插件 `adv_train rvc/run resume=true` 入口执行；它不会拦截外部 WebUI 按钮，也未新增完整 Applio 训练后端。
 
 停止操作只给本入口任务发送停止请求，由该任务结束自己的子进程树；之后仍需查询同一 jobId 确认 `stopped`。未知任务不会按进程名搜索并结束。中断后用新的阶段任务继续，损坏或不完整产物会被检查器拒绝。
 

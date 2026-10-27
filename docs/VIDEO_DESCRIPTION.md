@@ -8,4 +8,4 @@
 
 接入来源：[dsh-train-pipeline](https://github.com/InariNGT-Ofiicial/dsh-train-pipeline)、[dsh-anime-voice](https://github.com/InariNGT-Ofiicial/dsh-anime-voice)、[rvc-voice-kit](https://github.com/InariNGT-Ofiicial/rvc-voice-kit)
 
-适用版本：0.3.0。RVC 已接入 v2 单角色训练、显式续训、索引生成与音色包交接；合成语料实际验证不代表真实角色音质验收，具体范围见 VALIDATION.md。
+适用版本：0.3.1。RVC 已接入 v2 单角色训练、显式续训、索引生成与音色包交接；续训前自动独立备份 G/D，并核验模型与优化器实际恢复。合成语料实际验证不代表真实角色音质验收，具体范围见 VALIDATION.md。

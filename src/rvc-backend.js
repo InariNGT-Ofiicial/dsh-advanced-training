@@ -94,7 +94,10 @@ export function createRvcBackend(raw = {}, dependencies = {}) {
       else if (j.state.heartbeatAt && Date.now()/1000 - j.state.heartbeatAt > 60) state = 'unknown';
     }
     const ok = !['failed', 'lost', 'unknown', 'stopped'].includes(state);
-    return out(ok, `【RVC ${j.spec.action}】${state}\n${j.state.error || ''}\n日志：${j.spec.logPath}\n${tail(j.spec.logPath)}`,
+    const resume = j.state.resume;
+    const recovery = (j.state.backupDir ? `\nG/D 独立备份：${j.state.backupDir}` : '')
+      + (resume ? `\n续训起点：第 ${resume.fromEpoch} 轮；目标总轮次 ${resume.targetEpoch}；G/D 与优化器恢复${resume.confirmed ? '已确认' : '待确认'}` : '');
+    return out(ok, `【RVC ${j.spec.action}】${state}\n${j.state.error || ''}${recovery}\n日志：${j.spec.logPath}\n${tail(j.spec.logPath)}`,
       { ...j.state, ok, stage: 'rvc-status', state, jobId: j.spec.jobId, logPath: j.spec.logPath, statePath: j.spec.statePath, qualityAccepted: false });
   };
   const background = async (action, params) => {
@@ -127,7 +130,7 @@ export function createRvcBackend(raw = {}, dependencies = {}) {
   add('scan', '盘点已人工确认的单角色语音目录，实测时长和音频规格；不修改原始音频，不接受混合角色语料作为已确认输入。', { input: str('单角色原始音频目录') }, ['input'], p => foreground('scan', p));
   add('build', '后台调用 RVC 原生 prep，生成目标采样率和 16k 配对切片；回读数量/规格，不能仅按退出码判断。已有出料仅在 resume=true 且语料指纹一致时复用。', { expName: exp, input: str('单角色音频目录'), sampleRate: rate, minSlices: positive, resume: { type: 'boolean' } }, ['input'], p => background('build', p));
   add('preprocess', '后台执行 F0 → HuBERT v2 特征 → filelist，逐条检查配对、维度和有限数值；必须等 build 成功后调用。', { expName: exp, sampleRate: rate, minSlices: positive }, [], p => background('preprocess', p));
-  add('run', '后台训练 RVC v2（GPU 0）；默认拒绝已有检查点，续训需 resume=true。返回启动回执，status 成功须有达到目标 epoch 的小模型和 G/D 检查点。不调用推理。', { expName: exp, sampleRate: rate, epochs: positive, batchSize: positive, saveEvery: positive, resume: { type: 'boolean' } }, [], p => background('run', p));
+  add('run', '后台训练 RVC v2（GPU 0）；默认拒绝已有检查点。resume=true 必须有成对 G/D 与优化器状态，先备份到引擎 logs 外并核验哈希，再确认实际恢复轮次；备份/恢复失败即停止，禁止回退第 1 轮。epochs 为目标总轮次，必须大于已有轮次。用 status 查看备份位置与恢复证明。', { expName: exp, sampleRate: rate, epochs: positive, batchSize: positive, saveEvery: positive, resume: { type: 'boolean' } }, [], p => background('run', p));
   add('index', '后台构建检索索引，并回读验证 added 索引包含向量且维度为 768；trained 中间索引不算成品。', { expName: exp, sampleRate: rate }, [], p => background('index', p));
   add('status', '读取本入口任务状态、真实日志与经核查的阶段产物；succeeded 只证明该阶段通过，训练状态不能代表听感。', { expName: exp, jobId: str('启动返回的任务 ID，可省略取该实验最新任务') }, [], status);
   add('stop', '只向本入口拥有的任务发送停止请求，由它终止自己的子进程树；不会按实验名搜索并终止其他外部进程。之后用 status 确认 stopped。', { expName: exp, jobId: str('本入口任务 ID') }, [], async p => {

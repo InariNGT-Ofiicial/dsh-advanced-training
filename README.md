@@ -2,7 +2,7 @@
 
 DeepseekHarness 中面向音色模型训练的统一入口。一个主插件接入游戏素材、番剧摘句和自备单人语音集，衔接数据整理、质量检查、DDSP / GPT-SoVITS / RVC 训练与模型交接。
 
-**[v0.3.0](https://github.com/InariNGT-Ofiicial/dsh-advanced-training/releases/tag/v0.3.0)** 新增 RVC v2 训练、续训、检索索引与音色包交接。原四个质量工具保持兼容，旧版说明存于 [质量方法与历史实验](docs/QUALITY_METHODS.md)。
+**[v0.3.1](https://github.com/InariNGT-Ofiicial/dsh-advanced-training/releases/tag/v0.3.1)** RVC 续训前自动独立备份 G/D，校验实际恢复轮次与优化器；备份或恢复失败即停止，避免静默从零训练。原四个质量工具保持兼容，旧版说明存于 [质量方法与历史实验](docs/QUALITY_METHODS.md)。
 
 ## 生态位置
 
@@ -86,7 +86,7 @@ dsh plugin add .
 
 **自备单人语音**：DDSP 用 `scan → build → qc → preprocess → run → status → register`。GPT-SoVITS 有原台词时用 JSONL 配对出料；无台词时 `build voiceOnly=true allowEmptyText=true → asr`，人工校对和尾音检查后预处理。空文本 WAV 不能当作已配对语料。
 
-RVC 用 `doctor → scan → 语料回听/尾音检查 → build → preprocess → run → index → register`，各后台阶段之间查询对应 `jobId` 的 `status`。默认不覆盖已有出料或重开已有模型；续训需显式 `resume=true`。归档包含导出的小模型、added 索引、配置、清单、训练日志和哈希，不把 G/D 检查点当作可交接的小模型。
+RVC 用 `doctor → scan → 语料回听/尾音检查 → build → preprocess → run → index → register`，各后台阶段之间查询对应 `jobId` 的 `status`。默认不覆盖已有出料或重开已有模型；续训需显式 `resume=true`，先把最新成对 G/D、配置和清单备份到引擎 `logs` 外，校验哈希与真实轮次后，严格恢复模型和优化器。缺失、损坏、备份空间不足或恢复失败即停止，不回退第 1 轮；status 显示备份位置和恢复证明。归档包含导出的小模型、added 索引、配置、清单、训练日志和哈希，不把 G/D 检查点当作可交接的小模型。
 
 **游戏素材**：先 `ddsp/unpack`，读取实际解包目录再扫描。GPT-SoVITS 优先用 `gsv/script` 保留游戏剧本原文。解包支持范围由上游实现决定，不承诺所有游戏或加密格式。
 

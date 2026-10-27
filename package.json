@@ -1,6 +1,6 @@
 {
   "name": "dsh-advanced-training",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "DeepseekHarness unified voice-model training entry: game/anime/own-audio materials, DDSP, GPT-SoVITS and RVC training backends, quality checks and model handoff. No inference, cover or publishing in the unified flow.",
   "type": "module",
@@ -29,7 +29,7 @@
     }
   },
   "scripts": {
-    "test": "node test/smoke.mjs && node test/integration.mjs && node test/rvc.mjs && node test/rvc-process-tree.mjs",
+    "test": "node test/smoke.mjs && node test/integration.mjs && node test/rvc.mjs && node test/rvc-process-tree.mjs && node test/rvc-resume.mjs",
     "test:local": "node test/local-pipeline.mjs",
     "test:rvc:local": "node test/rvc-local.mjs"
   },
@@ -46,6 +46,7 @@
     "py/*.py",
     "cordis.patch.yml",
     "test/*.mjs",
+    "test/*.py",
     "README.md",
     "CHANGELOG.md",
     "vendor/**/*.js",

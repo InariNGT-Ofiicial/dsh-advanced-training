@@ -52,6 +52,10 @@ try {
   writeFileSync(launched.statePath, JSON.stringify({ ok: true, state: 'running', pid: 2147483647, jobId: launched.jobId, heartbeatAt: 1 }));
   status = await backend.get('status').execute({ jobId: run.jobId });
   assert(!status.ok && status.state === 'lost', 'a dead process cannot remain successful');
+  writeFileSync(launched.statePath, JSON.stringify({ ok: true, state: 'running', pid: process.pid, jobId: launched.jobId, heartbeatAt: Date.now()/1000,
+    backupDir: 'independent-backup', resume: { fromEpoch: 10, targetEpoch: 11, confirmed: true } }));
+  status = await backend.get('status').execute({ jobId: run.jobId });
+  assert(status.ok && status.rendered.includes('第 10 轮') && status.rendered.includes('恢复已确认') && status.rendered.includes('independent-backup'));
   const configFile = join(root, 'local.json');
   writeFileSync(configFile, JSON.stringify({ pipelines: { rvc: { expName: 'from-file' } } }));
   const merged = loadTrainingConfig({ trainingConfig: configFile, pipelines: { rvc: { root, expName: 'old' } } });
