@@ -1,4 +1,6 @@
-# RVC 路线（0.3.1）
+# 旧 RVC 路线（0.4.0）
+
+本文为 `route=rvc` 的旧引擎适配。Applio 已在 0.4.0 作为独立 `route=applio` 完整接入，见 [Applio 使用说明](APPLIO.md)。
 
 主插件调用固定版本 rvc-voice-kit 的训练脚本，训练计算由本机 RVC 引擎完成。RVC 接收已确认的单角色音频，不需要文本；游戏解包和番剧摘句得到的干净角色目录、自备语音目录都可以作为输入。角色混杂、配乐、人声重叠或切尾仍需回源整理和回听。
 
@@ -104,7 +106,7 @@ RVC 引擎需包含：
 
 收到过“点开始训练后旧 G/D 被清理，实际从第 1 轮重跑”的反馈，未取得该次安装的版本与选项记录。核对 Applio 提交 [fb427aa](https://github.com/IAHispano/Applio/tree/fb427aa388a954a387da7034fbbc08313f7ffe8c)：[界面的 Fresh Training 选项](https://github.com/IAHispano/Applio/blob/fb427aa388a954a387da7034fbbc08313f7ffe8c/tabs/train/train.py#L713) 默认关闭；打开后，[训练入口会删除旧 G/D 等产物](https://github.com/IAHispano/Applio/blob/fb427aa388a954a387da7034fbbc08313f7ffe8c/rvc/train/train.py#L278)。不能将其概括为所有版本每次点击开始都会删除。
 
-在 Applio 界面继续训练时，先把成对 G/D、配置与清单另存到 logs 外，核对 Fresh Training / cleanup 关闭，检查加载记录与起始轮次后再长时间运行。本插件的自动备份只在本插件 `adv_train rvc/run resume=true` 入口执行；它不会拦截外部 WebUI 按钮，也未新增完整 Applio 训练后端。
+在 Applio 界面继续训练时，先把成对 G/D、配置与清单另存到 logs 外，核对 Fresh Training / cleanup 关闭，检查加载记录与起始轮次后再长时间运行。本插件不会拦截外部 WebUI 按钮。现在可改用 `applio/adopt → applio/resume`，在插件内完成自动备份、恢复和续训，无需外部点击开始。
 
 停止操作只给本入口任务发送停止请求，由该任务结束自己的子进程树；之后仍需查询同一 jobId 确认 `stopped`。未知任务不会按进程名搜索并结束。中断后用新的阶段任务继续，损坏或不完整产物会被检查器拒绝。
 

@@ -1,6 +1,6 @@
 /**
  * dsh-advanced-training: unified material, dataset, training and model-handoff entry.
- * Built-in DDSP/GPT-SoVITS/RVC/anime backends retain their own formats and engines.
+ * DDSP/GPT-SoVITS/RVC/Applio/anime adapters retain their own formats and engines.
  * Original quality tools remain compatible; inference/cover/publishing are excluded
  * from the new training entry.
  */

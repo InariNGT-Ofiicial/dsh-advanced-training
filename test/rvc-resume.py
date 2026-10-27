@@ -95,19 +95,39 @@ class ResumeTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 r.checkpoint_metadata('fixture', lambda _: {**value, key: invalid})
 
-    def guard_fixture(self, invalid=False):
+    def guard_fixture(self, invalid=False, engine='rvc'):
         backup, manifest = self.backup()
         cfg = self.root/'guard.json'
         proof = self.root/'proof.json'
-        r.save(cfg, {**manifest, 'backupDir': str(backup), 'proofPath': str(proof)})
+        r.save(cfg, {**manifest, 'engine': engine, 'backupDir': str(backup), 'proofPath': str(proof)})
         tensor = SimpleNamespace(shape=(1,))
-        model = SimpleNamespace(state_dict=lambda: {'w': tensor}, load_state_dict=lambda value, strict: None)
+        current_key = 'layer.parametrizations.weight.original0' if engine == 'applio' else 'w'
+        saved_key = 'layer.weight_g' if engine == 'applio' else 'w'
+        model = SimpleNamespace(state_dict=lambda: {current_key: tensor}, load_state_dict=lambda value, strict: None)
         optimizer = SimpleNamespace(load_state_dict=lambda _: None)
-        load = lambda _: {'model': {'w': SimpleNamespace(shape=(2,) if invalid else (1,))},
-                          'iteration': 10, 'optimizer': {'state': {0: 1}}, 'learning_rate': .0001}
+        load = lambda _: {'model': {saved_key: SimpleNamespace(shape=(2,) if invalid else (1,))},
+                          'iteration': 10, 'optimizer': {'state': {0: 1}}, 'learning_rate': .0001, 'scaler': {'scale':8192}}
         utils = SimpleNamespace()
         r.install_guard(cfg, utils, load)
         return backup, proof, utils, model, optimizer
+
+    def test_applio_five_value_loader_preserves_amp_and_normalizes_keys(self):
+        backup, proof, utils, model, opt = self.guard_fixture(engine='applio')
+        for kind in ['D','G']:
+            result=utils.load_checkpoint(backup/(kind+'_100.pth'),model,opt)
+            self.assertEqual(len(result),5)
+            self.assertEqual(result[4],{'scale':8192})
+        p=json.loads(proof.read_text(encoding='utf-8'))
+        self.assertTrue(p['confirmed'] and all(x['ampStatePresent'] for x in p['loaded'].values()))
+
+    def test_custom_logs_root_also_protects_backup_location(self):
+        original=self.log
+        self.log=self.root/'moved-logs'/'fixture';self.log.mkdir(parents=True)
+        for name in ['G_100.pth','D_100.pth','config.json','filelist.txt']:
+            (self.log/name).write_bytes((original/name).read_bytes())
+        self.work=self.log/'work'
+        with self.assertRaisesRegex(ValueError,'logs 目录之外'):
+            self.backup(logs_root=self.log.parent)
 
     def test_restore_uses_backup_and_confirms_both_optimizers(self):
         backup, proof, utils, model, opt = self.guard_fixture()

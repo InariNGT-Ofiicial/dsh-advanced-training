@@ -40,6 +40,7 @@ export function resolveConfig(cfg = {}) {
       c.pyEnv,
       env('DSH_TRAIN_PYTHON'),
       c.rvcEnv || c.pipelines?.rvc?.python,
+      c.applioEnv || c.pipelines?.applio?.python,
       c.ddspDir ? join(c.ddspDir, 'env/python.exe') : '',
       'D:/AI-Song/01_人声分离_MSST-GUI/env/python.exe',
     ].filter(Boolean);

@@ -1,4 +1,24 @@
-# 0.3.1 验证范围（2026-10-28）
+# 0.4.0 验证范围（2026-10-28）
+
+已执行：
+
+- 完整 npm test：保持 7 个公开工具，增加独立 Applio 路线、配置、参数校验与已有实验续训计划；拒绝 cleanup、推理、任意实验路径或强制绕过 resume 保护。
+- 12 个备份/恢复回归用例，新增 Applio 参数化权重命名、五项加载返回值、AMP 状态传递与自定义 logs 根目录保护；另有 6 个 Applio 纯 Python 用例验证位置参数、cleanup=false、离线 embedder 参数、外部存活进程拒绝、接口指纹变化/EOL 归一、Windows 复制入口的模块搜索路径和中文索引写入。
+- 固定官方 Applio 提交 fb427aa388a954a387da7034fbbc08313f7ffe8c（3.7.1）。独立工作区环境复用 PyTorch/torchaudio 2.7.1+cu128、Transformers 4.49.0，补齐缺失依赖；这不是对上游 requirements 中每个指定版本的逐项复现。
+- Windows / RTX 5060 Laptop 8GB / HiFi-GAN / 48k / RMVPE / FP16。4 条 4 秒合成音频，使用 Skip 切片，实际生成 4 条切片、F0 与 768 维特征及 6 行含静音训练清单。最终 logsDir 使用独立中文目录，未走引擎默认 logs。
+- 插件内新训练达到第 2 轮；缺少 G/D 的续训和已有模型的普通重开均正确拒绝。
+- 从新的插件工作根目录 adopt 已有实验，核验第 2 轮 G/D，再调用 resume：自动独立备份，实际恢复 G/D 和优化器，AMP 状态经五项返回值交给 Applio 恢复，fromEpoch=2、targetEpoch=3、confirmed=true、两份 optimizerRestored=true/ampStatePresent=true；产出第 3 轮模型，训练后备份哈希保持一致。
+- 原生索引构建并回读通过，768 维、796 向量。归档模型、索引、配置、清单、模型信息、日志和恢复证明；重复目标拒绝覆盖。另一个独立实验的 stop 返回 stopped。
+- 新训练底模和 embedder 指向不存在的路径后，resumeOnly 体检仍通过；使用已准备的实验再次实际从第 3 轮恢复到第 4 轮，验证续训不需要重新提取或重新下载底模。experiments 列表也已实际读取验证。
+- 旧 RVC 路线再做真实 GPU 回归：新训第 2 轮、备份并恢复至第 3 轮、索引、归档与停止通过。
+
+过程中发现 Windows 复制训练入口后，原生裸模块导入缺少 train 目录；修复搜索路径并增加回归测试后重新跑通完整链路。过程未使用外部 WebUI，也未执行 cleanup 或推理。
+
+另实证发现原生 FAISS 窄字符写盘不支持中文目录；适配器保留算法、改用原生 VectorIOWriter 序列化并由 Python 写盘，独立 3 向量探针及最终完整中文目录流程均通过。
+
+未在本轮完成其他系统、其他 Applio 接口版本、其他采样率、RefineGAN、其他 F0/精度、Automatic 切片及真实角色长训练/听感验收。参数接入不等于这些组合均已完成 GPU 验收；交接包仍标记 qualityAccepted=false。DDSP/GPT-SoVITS 与番剧的验证范围沿用历史记录。
+
+## 0.3.1 历史验证（2026-10-28）
 
 已执行：
 

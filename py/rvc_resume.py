@@ -44,11 +44,11 @@ def checkpoint_metadata(path, load=None):
     return {'epoch': epoch, 'learningRate': lr}
 
 
-def backup_resume(logdir, work, repo, job_id, target_epoch, progress=lambda **_: None, inspect=checkpoint_metadata):
+def backup_resume(logdir, work, repo, job_id, target_epoch, progress=lambda **_: None, inspect=checkpoint_metadata, logs_root=None, extra_files=(), engine='rvc'):
     require(re.fullmatch(r'[A-Za-z0-9_-]+', job_id), '备份任务 ID 不能是路径。')
     logdir, work, repo = map(lambda p: Path(p).resolve(), [logdir, work, repo])
     target = work/'checkpoint-backups'/(time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())+'-'+job_id)
-    require(not target.is_relative_to(repo/'logs'), '续训备份必须位于引擎 logs 目录之外，请调整 workRoot。')
+    require(not target.is_relative_to(Path(logs_root).resolve() if logs_root else repo/'logs'), '续训备份必须位于引擎 logs 目录之外，请调整 workRoot。')
     selected = []
     for kind in ['G', 'D']:
         paths = list(logdir.glob(kind+'_*.pth'))
@@ -58,13 +58,16 @@ def backup_resume(logdir, work, repo, job_id, target_epoch, progress=lambda **_:
         selected.append(paths[-1])
     require(selected[0].stem[2:] == selected[1].stem[2:], '最新 G/D 编号不配对，可能写盘中断；不会静默换成旧轮次。')
     selected += [logdir/'config.json', logdir/'filelist.txt']
+    for name in extra_files:
+        require(Path(name).name == name, '备份附加文件只能是实验目录内的文件名。')
+        selected.append(logdir/name)
     for p in selected:
         require(p.is_file() and p.resolve().parent == logdir and p.stat().st_size > 0, f'缺少有效实验文件或文件指向实验外：{p}')
     required_bytes = sum(p.stat().st_size for p in selected)
     work.mkdir(parents=True, exist_ok=True)
     require(shutil.disk_usage(work).free >= required_bytes + 16*1024*1024, '空间不足，未完成 G/D 备份；本次续训不会启动。')
     target.mkdir(parents=True, exist_ok=False)
-    manifest = {'format': 1, 'jobId': job_id, 'repo': str(repo), 'experiment': logdir.name,
+    manifest = {'format': 1, 'engine': engine, 'jobId': job_id, 'repo': str(repo), 'experiment': logdir.name,
                 'logDir': str(logdir), 'targetEpoch': target_epoch, 'complete': False, 'files': []}
     save(target/'backup.json', manifest)
     progress(phase='checkpoint-backup', backupDir=str(target))
@@ -93,22 +96,25 @@ def backup_resume(logdir, work, repo, job_id, target_epoch, progress=lambda **_:
     return target, manifest
 
 
-def guarded_runner(repo, job_dir, backup_dir, manifest, python_dir):
+def guarded_runner(repo, job_dir, backup_dir, manifest, python_dir, engine='rvc'):
     """Freeze the engine entry file locally; never edit the installed engine."""
     repo, job_dir = Path(repo).resolve(), Path(job_dir).resolve()
-    source = (repo/'train/train.py').read_text(encoding='utf-8-sig')
+    source = (repo/('rvc/train/train.py' if engine == 'applio' else 'train/train.py')).read_text(encoding='utf-8-sig')
     tree = ast.parse(source)
     calls = {ast.unparse(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)}
-    require({'utils.load_checkpoint', 'utils.latest_checkpoint_path'} <= calls, '该引擎恢复调用不在已支持布局内，拒绝无保护续训。')
+    expected_calls = {'load_checkpoint','latest_checkpoint_path'} if engine == 'applio' else {'utils.load_checkpoint', 'utils.latest_checkpoint_path'}
+    require(expected_calls <= calls, '该引擎恢复调用不在已支持布局内，拒绝无保护续训。')
     require(not any(isinstance(n, ast.Name) and n.id == '__file__' for n in ast.walk(tree)), '该训练入口依赖相对文件位置，尚未支持安全续训。')
     job_dir.mkdir(parents=True, exist_ok=True)
     frozen = job_dir/'engine-train.py'
     frozen.write_text(source, encoding='utf-8')
     guard = job_dir/'resume-guard.json'
-    save(guard, {**manifest, 'backupDir': str(Path(backup_dir).resolve()), 'proofPath': str(job_dir/'resume-proof.json'), 'engineSourceSha256': sha(frozen)})
+    save(guard, {**manifest, 'engine': engine, 'backupDir': str(Path(backup_dir).resolve()), 'proofPath': str(job_dir/'resume-proof.json'), 'engineSourceSha256': sha(frozen)})
     runner = job_dir/'resume-train.py'
     runner.write_text('import sys\nfrom pathlib import Path\n'
         f'sys.path.insert(0, {str(repo)!r})\nsys.path.insert(0, {str(Path(python_dir).resolve())!r})\n'
+        + (f'sys.path.insert(0, {str(repo/"rvc/train")!r})\n' if engine == 'applio' else '')
+        +
         'from rvc_resume import install_guard\n'+f'install_guard({str(guard)!r})\n'
         f'exec(compile(Path({str(frozen)!r}).read_text(encoding="utf-8"), {str(frozen)!r}, "exec"), globals())\n', encoding='utf-8')
     return runner, job_dir/'resume-proof.json'
@@ -122,7 +128,10 @@ def install_guard(path, utils=None, load=None):
     cfg = json.loads(Path(path).read_text(encoding='utf-8-sig'))
     if not cfg.get('complete'): raise ResumeAbort('续训备份未完成，拒绝启动。')
     if utils is None:
-        from train import utils
+        if cfg.get('engine') == 'applio':
+            from rvc.train import utils
+        else:
+            from train import utils
     if load is None:
         import torch
         load = lambda p: torch.load(p, map_location='cpu', weights_only=True)
@@ -141,6 +150,8 @@ def install_guard(path, utils=None, load=None):
             expected = Path(cfg['backupDir'])/entry['file']
             require(Path(checkpoint_path).resolve() == expected.resolve() and sha(expected) == entry['sha256'], '续训快照路径或 SHA-256 不一致。')
             d = load(expected)
+            if cfg.get('engine') == 'applio':
+                d['model'] = {k.replace('.weight_v', '.parametrizations.weight.original1').replace('.weight_g', '.parametrizations.weight.original0'): v for k,v in d['model'].items()}
             require(d['iteration'] == cfg['fromEpoch'], '恢复轮次与备份不一致。')
             require(optimizer is not None and load_opt == 1, '必须恢复优化器状态。')
             bare = model.module if hasattr(model, 'module') else model
@@ -148,11 +159,13 @@ def install_guard(path, utils=None, load=None):
             require(current.keys() == d['model'].keys() and all(current[k].shape == d['model'][k].shape for k in current), '检查点结构/维度与训练模型不一致。')
             bare.load_state_dict(d['model'], strict=True)
             optimizer.load_state_dict(d['optimizer'])
-            loaded[kind] = {'file': str(expected), 'sha256': entry['sha256'], 'epoch': d['iteration'], 'optimizerRestored': True}
+            loaded[kind] = {'file': str(expected), 'sha256': entry['sha256'], 'epoch': d['iteration'], 'optimizerRestored': True,
+                            **({'ampStatePresent': bool(d.get('scaler'))} if cfg.get('engine') == 'applio' else {})}
             proof = {'jobId': cfg['jobId'], 'pid': os.getpid(), 'fromEpoch': cfg['fromEpoch'], 'targetEpoch': cfg['targetEpoch'], 'backupDir': cfg['backupDir'], 'confirmed': set(loaded) == {'G', 'D'}, 'loaded': loaded}
             save(Path(cfg['proofPath']), proof)
             print('[dsh-resume] '+json.dumps(proof, ensure_ascii=False), flush=True)
-            return model, optimizer, d['learning_rate'], d['iteration']
+            result = (model, optimizer, d['learning_rate'], d['iteration'])
+            return (*result, d.get('scaler', {})) if cfg.get('engine') == 'applio' else result
         except Exception as e:
             raise ResumeAbort(f'续训恢复失败，已停止，禁止回退第 1 轮：{e}；备份：{cfg["backupDir"]}') from None
 

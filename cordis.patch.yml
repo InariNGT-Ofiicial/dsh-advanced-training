@@ -34,6 +34,8 @@
         rvcRoot: !!js process.env.DSH_RVC_ROOT ?? ''
         rvcRepo: !!js process.env.RVCX_REPO ?? ''
         rvcEnv: !!js process.env.RVCX_PY ?? ''
+        applioRoot: !!js process.env.DSH_APPLIO_ROOT ?? ''
+        applioEnv: !!js process.env.DSH_APPLIO_PYTHON ?? ''
 
         # ── ASR（验收 A/B 用，跑在 gsvEnv 里）─────────────────────────
         asrModel: 'large-v3'

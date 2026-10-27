@@ -44,6 +44,29 @@
       "saveEvery": 10,
       "processes": 2,
       "minSlices": 1
+    },
+    "applio": {
+      "repo": "",
+      "python": "",
+      "logsDir": "",
+      "workRoot": "",
+      "modelDir": "",
+      "ffmpegDir": "",
+      "embedderDir": "",
+      "pretrainedG": "",
+      "pretrainedD": "",
+      "expName": "my-applio-voice",
+      "sampleRate": "48k",
+      "vocoder": "HiFi-GAN",
+      "precision": "fp16",
+      "f0Method": "rmvpe",
+      "cutMode": "Automatic",
+      "normalization": "none",
+      "epochs": 150,
+      "batchSize": 4,
+      "saveEvery": 10,
+      "processes": 2,
+      "minSlices": 1
     }
   }
 }

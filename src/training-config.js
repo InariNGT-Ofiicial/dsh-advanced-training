@@ -9,7 +9,7 @@ export function loadTrainingConfig(config = {}) {
   catch (e) { throw new Error(`训练配置读取失败 ${path}: ${e.message}`); }
   if (!local || typeof local !== 'object' || Array.isArray(local)) throw new Error('训练配置必须是 JSON 对象');
   const pipelines = { ...(config.pipelines || {}), ...(local.pipelines || {}) };
-  for (const route of ['ddsp', 'gsv', 'rvc', 'anime']) {
+  for (const route of ['ddsp', 'gsv', 'rvc', 'applio', 'anime']) {
     const value = local.pipelines?.[route];
     if (value !== undefined && (!value || typeof value !== 'object' || Array.isArray(value))) throw new Error(`pipelines.${route} 必须是对象`);
     pipelines[route] = { ...(config.pipelines?.[route] || {}), ...(value || {}) };

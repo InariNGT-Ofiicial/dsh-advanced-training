@@ -351,5 +351,14 @@
         }
       ]
     }
+  ],
+  "externalEngines": [
+    {
+      "id": "applio",
+      "repository": "https://github.com/IAHispano/Applio",
+      "interfaceCommit": "fb427aa388a954a387da7034fbbc08313f7ffe8c",
+      "interfaceManifest": "applio-interface.json",
+      "bundled": false
+    }
   ]
 }

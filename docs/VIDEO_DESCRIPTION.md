@@ -8,4 +8,4 @@
 
 接入来源：[dsh-train-pipeline](https://github.com/InariNGT-Ofiicial/dsh-train-pipeline)、[dsh-anime-voice](https://github.com/InariNGT-Ofiicial/dsh-anime-voice)、[rvc-voice-kit](https://github.com/InariNGT-Ofiicial/rvc-voice-kit)
 
-适用版本：0.3.1。RVC 已接入 v2 单角色训练、显式续训、索引生成与音色包交接；续训前自动独立备份 G/D，并核验模型与优化器实际恢复。合成语料实际验证不代表真实角色音质验收，具体范围见 VALIDATION.md。
+适用版本：0.4.0。RVC 与 Applio 已接入单角色训练、显式续训、索引生成与音色包交接；Applio 可在插件内接管既有实验，自动备份 G/D 并核验模型、优化器和 AMP 恢复，无需外部界面点击开始。合成语料实际验证不代表真实角色音质验收，具体范围见 VALIDATION.md。

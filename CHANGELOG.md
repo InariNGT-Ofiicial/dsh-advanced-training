@@ -1,5 +1,14 @@
 # Changelog — dsh-advanced-training
 
+## 0.4.0 (2026-10-28)
+
+- 增加独立 applio 路线：doctor、scan、build、preprocess、run、index、status、stop、register，以及 experiments、adopt、resume；公开主工具仍为 7 个。
+- 直接调用已核验 Applio 3.7.1 原生脚本，接通切片、F0/特征、GPU 新训练、成品索引与模型交接；不依赖 WebUI。
+- 支持自定义 logsDir 与已有实验接管。resume 强制自动备份 G/D、配置、清单及模型信息，严格恢复优化器和 AMP 状态，固定 cleanup=false。
+- 保存 8 个关键接口文件的指纹；未知接口、显式离线 embedder 错误、外部存活训练进程或恢复失败均拒绝继续。
+- 增加已有实验续训计划、可读状态/恢复证明和来源信息；保留旧 RVC、DDSP、GPT-SoVITS 与番剧入口。
+- 真实合成语料验证 Applio 新训至第 2 轮，换工作记录接管后恢复到第 3 轮、796 向量索引、归档和停止；旧 RVC GPU 续训回归通过。未进行真实角色听感验收。
+
 ## 0.3.1 (2026-10-28)
 
 - RVC 显式续训前，将最新成对 G/D、配置和训练清单复制到引擎 logs 外的独立目录，校验源文件稳定性、大小、SHA-256、内部轮次及优化器状态。

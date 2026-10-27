@@ -6,6 +6,7 @@ import { apply as applyDdsp } from '../vendor/ddsp-pipeline/src/index.js';
 import { apply as applyGsv } from '../vendor/anime-voice/plugins/tts-train-pipeline/src/index.js';
 import { createAnimeBackend } from './anime-backend.js';
 import { createRvcBackend } from './rvc-backend.js';
+import { createApplioBackend } from './applio-backend.js';
 
 const MANIFEST = JSON.parse(readFileSync(new URL('../vendor/manifest.json', import.meta.url), 'utf8'));
 const ACTIONS = {
@@ -65,7 +66,7 @@ async function capture(apply, ctx, config, prefix, actions) {
 
 export function backendConfig(config, route) {
   const common = {};
-  const keys = route === 'rvc' ? ['rvcRoot', 'rvcRepo', 'rvcEnv', 'rvcFfmpegDir', 'workRoot', 'ffmpeg', 'expName'] : route === 'ddsp'
+  const keys = route === 'applio' ? ['applioRoot','applioEnv','workRoot','ffmpeg','expName'] : route === 'rvc' ? ['rvcRoot', 'rvcRepo', 'rvcEnv', 'rvcFfmpegDir', 'workRoot', 'ffmpeg', 'expName'] : route === 'ddsp'
     ? ['songRoot', 'trainRoot', 'voiceLibDir', 'toolsDir', 'ddspDir', 'ddspEnv', 'ffmpeg', 'expName', 'timeoutMs', 'maxOutputChars']
     : ['songRoot', 'workRoot', 'gsvDir', 'gsvEnv', 'ffmpeg', 'expName', 'lang', 'asrCacheDir', 'timeoutMs', 'maxOutputChars'];
   for (const key of keys) if (config[key] !== undefined && config[key] !== '') common[key] = config[key];
@@ -78,6 +79,7 @@ export async function createTrainingHub(ctx, config = {}) {
     ['ddsp', await capture(applyDdsp, ctx, backendConfig(config, 'ddsp'), 'train', ACTIONS.ddsp)],
     ['gsv', await capture(applyGsv, ctx, backendConfig(config, 'gsv'), 'tts', ACTIONS.gsv)],
     ['rvc', createRvcBackend(backendConfig(config, 'rvc'))],
+    ['applio', createApplioBackend(backendConfig(config, 'applio'))],
     ['anime', createAnimeBackend(config.pipelines?.anime || {})],
   ]);
   const receiptDir = resolve(config.receiptDir || join(config.workRoot || process.cwd(), 'advanced-training', 'receipts'));
@@ -92,8 +94,8 @@ export async function createTrainingHub(ctx, config = {}) {
         .map(([a, d]) => ({ action: a, backendTool: d.name, description: d.description, parameters: d.parameters })) });
     }
     return reply(true, routes.map(r => `${r.route}: ${r.actions.map(a => a.action).join(' / ')}`).join('\n')
-      + '\n通过 adv_train 调用 DDSP/GPT-SoVITS/RVC 训练与素材步骤；推理、翻唱和发布不接入。RVC 后台阶段必须用返回的 jobId 查询 status。',
-    { stage: 'catalog', routes, sources: MANIFEST.sources.map(({ files, ...s }) => s), receiptDir });
+      + '\n通过 adv_train 调用 DDSP/GPT-SoVITS/RVC/Applio 训练与素材步骤；推理、翻唱和发布不接入。RVC/Applio 后台阶段必须用返回的 jobId 查询 status；Applio 已有实验用 adopt 接入后调用 resume。',
+    { stage: 'catalog', routes, sources: MANIFEST.sources.map(({ files, ...s }) => s), receiptDir, externalEngines: MANIFEST.externalEngines || [] });
   };
   const execute = async ({ route, action, params = {}, dryRun = false } = {}) => {
     const def = backends.get(route)?.get(action);
@@ -136,7 +138,20 @@ export async function createTrainingHub(ctx, config = {}) {
 
 export function trainingPlan(args = {}) {
   const { route, sourceType = 'audio', source, speaker = '', linesFile = '', outDir = '' } = args;
-  if (!['ddsp', 'gsv', 'rvc'].includes(route) || !source || !['audio', 'game', 'anime'].includes(sourceType)) return reply(false, '需要 route=ddsp/gsv/rvc、source 和 sourceType=audio/game/anime。');
+  if (route === 'applio' && sourceType === 'experiment') {
+    if (!source || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(source)) return reply(false, '已有 Applio 实验的 source 请填写安全的实验名；可先用 applio/experiments 列出。');
+    const steps = [
+      ['doctor', {expName:source,resumeOnly:true}, '检查已配置工程和 logsDir；不要求重新提取资源。'],
+      ['adopt', {expName:source}, '核验已有单角色实验和实际 G/D 轮次；外部训练须已停止。'],
+      ['resume', {expName:source}, '自动独立备份，再严格恢复；epochs 是目标总轮次，须大于检查点轮次。'],
+      ['status', {expName:source,jobId:'<resume 返回的 jobId>'}, '确认恢复证明和目标模型完成。'],
+      ['index', {expName:source}, '生成本路线的检索索引。'],
+      ['status', {expName:source,jobId:'<index 返回的 jobId>'}, '等索引核验通过。'],
+      ['register', {expName:source,...(speaker ? {role:speaker} : {})}, '交接模型、索引、配置、清单和日志。'],
+    ].map(([action,params,note])=>({tool:'adv_train',route,action,params,note}));
+    return reply(true, 'Applio 已有实验续训计划：doctor → adopt → resume → status → index → status → register；不调用外部界面。计划未执行，尖括号需替换为真实 jobId。', {stage:'plan',executed:false,route,sourceType,steps});
+  }
+  if (!['ddsp', 'gsv', 'rvc', 'applio'].includes(route) || !source || !['audio', 'game', 'anime'].includes(sourceType)) return reply(false, '需要 route=ddsp/gsv/rvc/applio、source 和 sourceType=audio/game/anime。');
   const steps = [];
   const add = (r, action, params, note = '') => steps.push({ tool: 'adv_train', route: r, action, params, note });
   add(route, 'doctor', {}, '只检查选择的训练路线；按报告补齐工程、Python、依赖和预训练权重。');
@@ -159,7 +174,7 @@ export function trainingPlan(args = {}) {
       lines = '<bridge 返回的训练台词.jsonl>';
     }
   }
-  if (route === 'rvc') {
+  if (route === 'rvc' || route === 'applio') {
     if (sourceType === 'game') input = '<解包后人工确认的目标角色语音目录>';
     add(route, 'scan', { input }, '仅接入单个已确认角色的语音，不需要台词标注。');
     steps.push({ tool: 'adv_tail_audit', params: { dir: input }, note: '训练前检查原始语料，损坏或切尾需要回源整理。' });
@@ -172,7 +187,7 @@ export function trainingPlan(args = {}) {
     add(route, 'index', {}, '构建并验证 added 检索索引；不使用索引时可明确跳过。');
     add(route, 'status', { jobId: '<index 返回的 jobId>' });
     add(route, 'register', speaker ? { role: speaker } : {}, '归档模型、索引、配置、清单、日志与哈希，不覆盖已有音色包。');
-    return reply(true, `【统一训练计划 · RVC / ${sourceType}】\n${steps.map((s, i) => `${i + 1}. ${s.tool}${s.action ? ` ${s.route}/${s.action}` : ''} ${s.note || ''}`).join('\n')}\n尖括号需替换为实际返回值；计划没有执行任何步骤。`, { stage: 'plan', executed: false, route, sourceType, steps, scope: 'RVC v2 单角色训练与模型交接，不调用推理、翻唱或发布。' });
+    return reply(true, `【统一训练计划 · ${route === 'applio' ? 'Applio' : 'RVC'} / ${sourceType}】\n${steps.map((s, i) => `${i + 1}. ${s.tool}${s.action ? ` ${s.route}/${s.action}` : ''} ${s.note || ''}`).join('\n')}\n尖括号需替换为实际返回值；计划没有执行任何步骤。${route === 'applio' ? ' 已有 Applio 实验可先 adopt 再 resume，自动备份并严格恢复。' : ''}`, { stage: 'plan', executed: false, route, sourceType, steps, scope: 'RVC/Applio v2 单角色训练与模型交接，不调用推理、翻唱或发布。' });
   }
   if (route === 'ddsp') {
     add(route, 'scan', { input });
@@ -197,8 +212,8 @@ export async function registerTrainingHub(ctx, config = {}) {
   const hub = await createTrainingHub(ctx, config);
   const tools = ctx.get('tools');
   const output = { schema: { type: 'object', properties: { ok: { type: 'boolean' }, rendered: { type: 'string' }, stage: { type: 'string' } }, required: ['ok', 'rendered'] }, render: (_a, v) => [{ type: 'text', text: String(v?.rendered ?? '(无输出)') }] };
-  tools.register({ name: 'adv_train_catalog', description: '统一训练入口：发现内置 DDSP、GPT-SoVITS、RVC 与番剧素材后端；返回真实可调用操作及其参数 schema。无需分别安装训练插件。不包含推理/翻唱/发布。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'rvc', 'anime'] }, action: str('可选：只看某个操作的参数') }), output, execute: async (a = {}) => hub.catalog(a) });
-  tools.register({ name: 'adv_train_plan', description: '从游戏、番剧或自备单人语音集制定逐步训练流程；区分 DDSP、GPT-SoVITS 与 RVC 的数据、标注和模型格式。本工具只制定计划；真实执行使用 adv_train。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'rvc'] }, sourceType: { type: 'string', enum: ['audio', 'game', 'anime'] }, source: str('本地素材路径'), speaker: str('目标角色'), linesFile: str('已有带台词 JSONL，可省略'), outDir: str('解包或番剧提取的新输出目录') }, ['route', 'source']), output, execute: async (a = {}) => trainingPlan(a) });
-  tools.register({ name: 'adv_train', description: '统一执行已接入的训练/素材操作。先用 adv_train_catalog 查询 route/action 的真实 params，再调用。route=ddsp/gsv/rvc 管训练，anime 管摘句/整集重建/台词桥接。返回原始后端结果与持久回执；run 只表示启动，需 status 核查。禁止推理、翻唱和发布操作。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'rvc', 'anime'] }, action: str('catalog 中的操作名'), params: { type: 'object', additionalProperties: true, description: '严格按所选操作的参数 schema 填写' }, dryRun: { type: 'boolean', description: '只检查参数并预览派发，不执行，也不验证依赖/产物' } }, ['route', 'action']), output, execute: hub.execute });
+  tools.register({ name: 'adv_train_catalog', description: '统一训练入口：发现内置 DDSP、GPT-SoVITS、RVC、Applio 与番剧素材后端；返回真实可调用操作及其参数 schema。无需分别安装训练插件。不包含推理/翻唱/发布。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'rvc', 'applio', 'anime'] }, action: str('可选：只看某个操作的参数') }), output, execute: async (a = {}) => hub.catalog(a) });
+  tools.register({ name: 'adv_train_plan', description: '从游戏、番剧或自备单人语音集制定逐步训练流程；区分 DDSP、GPT-SoVITS、RVC 与 Applio 的数据、标注和模型格式。本工具只制定计划；真实执行使用 adv_train。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'rvc', 'applio'] }, sourceType: { type: 'string', enum: ['audio', 'game', 'anime', 'experiment'] }, source: str('本地素材路径；Applio experiment 类型填写实验名'), speaker: str('目标角色'), linesFile: str('已有带台词 JSONL，可省略'), outDir: str('解包或番剧提取的新输出目录') }, ['route', 'source']), output, execute: async (a = {}) => trainingPlan(a) });
+  tools.register({ name: 'adv_train', description: '统一执行已接入的训练/素材操作。先用 adv_train_catalog 查询 route/action 的真实 params，再调用。route=ddsp/gsv/rvc/applio 管训练，anime 管摘句/整集重建/台词桥接。返回原始后端结果与持久回执；run 只表示启动，需 status 核查。禁止推理、翻唱和发布操作。', parameters: objectSchema({ route: { type: 'string', enum: ['ddsp', 'gsv', 'rvc', 'applio', 'anime'] }, action: str('catalog 中的操作名'), params: { type: 'object', additionalProperties: true, description: '严格按所选操作的参数 schema 填写' }, dryRun: { type: 'boolean', description: '只检查参数并预览派发，不执行，也不验证依赖/产物' } }, ['route', 'action']), output, execute: hub.execute });
   return hub;
 }

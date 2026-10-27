@@ -1,8 +1,8 @@
 # dsh-advanced-training
 
-DeepseekHarness 中面向音色模型训练的统一入口。一个主插件接入游戏素材、番剧摘句和自备单人语音集，衔接数据整理、质量检查、DDSP / GPT-SoVITS / RVC 训练与模型交接。
+DeepseekHarness 中面向音色模型训练的统一入口。一个主插件接入游戏素材、番剧摘句和自备单人语音集，衔接数据整理、质量检查、DDSP / GPT-SoVITS / RVC / Applio 训练与模型交接。
 
-**[v0.3.1](https://github.com/InariNGT-Ofiicial/dsh-advanced-training/releases/tag/v0.3.1)** RVC 续训前自动独立备份 G/D，校验实际恢复轮次与优化器；备份或恢复失败即停止，避免静默从零训练。原四个质量工具保持兼容，旧版说明存于 [质量方法与历史实验](docs/QUALITY_METHODS.md)。
+**[v0.4.0](https://github.com/InariNGT-Ofiicial/dsh-advanced-training/releases/tag/v0.4.0)** 新增完整 Applio 训练路线：预处理、特征、新训练、已有实验接管、安全续训、索引与模型交接均在插件内执行。续训自动独立备份并严格核验 G/D、优化器及 AMP 状态，不需要去外部界面点击开始。原四个质量工具保持兼容，旧版说明存于 [质量方法与历史实验](docs/QUALITY_METHODS.md)。
 
 ## 生态位置
 
@@ -14,10 +14,13 @@ DeepseekHarness 对话 → 本插件统一组织/派发 → 对应素材与训�
 | [dsh-anime-voice](https://github.com/InariNGT-Ofiicial/dsh-anime-voice) 摘句/整集重建脚本 | 候选说话人、人工角色映射、目标切片、台词清单与训练输入桥接 |
 | 同仓库 `tts-train-pipeline` 0.2.1 | GPT-SoVITS 原文配对出料、无文本语音 ASR 回标、预处理、训练、状态与模型注册 |
 | [rvc-voice-kit](https://github.com/InariNGT-Ofiicial/rvc-voice-kit) 训练脚本 | RVC 原生出料、F0 / HuBERT 特征、训练清单、GPU 训练与续训、检索索引；主插件补充任务管理与产物核验 |
+| [Applio](https://github.com/IAHispano/Applio) 3.7.1 的已核验训练接口 | 由主插件直接调用已安装工程的预处理、F0/特征、训练和索引脚本；接管既有实验并自动备份/严格恢复，全程后台执行 |
 
-相关项目的固定运行源码已内置，不必分别注册训练插件。具体算法和训练仍由 DDSP-SVC、GPT-SoVITS、RVC 等上游工程执行；不同路线的模型不合并或互转。来源提交和文件哈希见 [manifest](vendor/manifest.json)，许可见 [第三方说明](THIRD_PARTY_NOTICES.md)。
+DDSP、GPT-SoVITS 和番剧适配所需的固定运行源码已内置，Applio 接入外部安装工程，无需分别注册训练插件。具体算法和训练仍由对应上游工程执行；不同路线的模型不合并或互转。来源提交和文件哈希见 [manifest](vendor/manifest.json)，许可见 [第三方说明](THIRD_PARTY_NOTICES.md)。
 
 外部工程、Python 环境、解包工具与预训练权重需要自行配齐；加载插件不会安装依赖、下载模型、启动训练或生成音频。
+
+Applio 为独立的 `applio` 路线，保留旧 `rvc` 路线。引擎本体不随插件分发；所核验的接口提交与 8 个关键脚本指纹见 [Applio 接口清单](vendor/applio-interface.json)，接口不匹配时拒绝猜测参数。
 
 ## 安装与配置
 
@@ -37,6 +40,7 @@ dsh plugin add .
 - DDSP：`ddspDir/ddspEnv`；`pipelines.ddsp` 配独立 `trainRoot`、实验名、配置文件、模型库。
 - GPT-SoVITS：`gsvDir/gsvEnv`；`pipelines.gsv` 配实际已准备的版本、实验名和训练参数。模板 v2 为示例，不代替权重。
 - RVC：`pipelines.rvc` 配 `root/repo/python`、`workRoot/ffmpegDir/modelDir` 和训练参数。支持已有 RVC v2、48k/40k、单 GPU 0、pm/rmvpe；具体工程布局与步骤见 [RVC 使用说明](docs/RVC.md)。40k 必须另备对应底模、配置与静音样本，本轮实际验证的是 48k。
+- Applio：`pipelines.applio` 配 `repo/python/logsDir`、本地 embedder 与底模。`logsDir` 是实际实验根目录，支持已迁移的日志位置。配置与现有实验接入见 [Applio 使用说明](docs/APPLIO.md)。
 - 质量检查：`pyEnv` 需 numpy/soundfile，旧 ASR 评估用 `gsvEnv`。
 - 番剧：`pipelines.anime` 配分析 Python、FFmpeg、本地 `whisperModel`，以及含 `campplus_cn_common.bin` 的 `camppModel`。整集重建另需 `sepRoot/sepPython/sepConfig/sepCheckpoint`。参见 [分析依赖](vendor/anime-voice/requirements-analysis.txt)。
 
@@ -76,7 +80,7 @@ dsh plugin add .
 {"tool":"adv_train","arguments":{"route":"ddsp","action":"build","params":{"input":"D:/AudioWork/voice","speakers":["角色A"]}}}
 ```
 
-`ddsp/gsv/rvc` 是训练路线，`anime` 准备素材。params 以 catalog 的后端 schema 为准，不把 DDSP 的 `input/speakers` 原样传给 GPT-SoVITS 的 `lines/voiceDir/speaker`。RVC 接收单角色音频目录，不需要台词标注。
+`ddsp/gsv/rvc/applio` 是训练路线，`anime` 准备素材。params 以 catalog 的后端 schema 为准，不把 DDSP 的 `input/speakers` 原样传给 GPT-SoVITS 的 `lines/voiceDir/speaker`。RVC / Applio 接收单角色音频目录，不需要台词标注。
 
 `dryRun=true` 只校验参数和预览派发，不执行，不证明环境/产物通过。`run` 成功只代表后端接受/启动任务，需继续 `status` 查进程、日志和检查点。DDSP / GPT-SoVITS 的 `stop/register` 沿用后端保护。RVC 的 `build/preprocess/run/index` 都在后台执行，返回 `jobId`；每步等 `status` 为 `succeeded` 后再继续，`stop` 只处理本入口拥有的任务。
 
@@ -87,6 +91,8 @@ dsh plugin add .
 **自备单人语音**：DDSP 用 `scan → build → qc → preprocess → run → status → register`。GPT-SoVITS 有原台词时用 JSONL 配对出料；无台词时 `build voiceOnly=true allowEmptyText=true → asr`，人工校对和尾音检查后预处理。空文本 WAV 不能当作已配对语料。
 
 RVC 用 `doctor → scan → 语料回听/尾音检查 → build → preprocess → run → index → register`，各后台阶段之间查询对应 `jobId` 的 `status`。默认不覆盖已有出料或重开已有模型；续训需显式 `resume=true`，先把最新成对 G/D、配置和清单备份到引擎 `logs` 外，校验哈希与真实轮次后，严格恢复模型和优化器。缺失、损坏、备份空间不足或恢复失败即停止，不回退第 1 轮；status 显示备份位置和恢复证明。归档包含导出的小模型、added 索引、配置、清单、训练日志和哈希，不把 G/D 检查点当作可交接的小模型。
+
+Applio 新训练走同样的阶段顺序，调用其原生 `sliced_audios/extracted/f0/f0_voiced` 流程。已有实验先 `experiments` 查看名称，再 `adopt` 核验和登记，最后 `resume` 自动备份、恢复并训练；也可用 `adv_train_plan route=applio sourceType=experiment source=<实验名>` 制定续训计划。固定 `cleanup=false`，不调用 WebUI、自动关机或推理。
 
 **游戏素材**：先 `ddsp/unpack`，读取实际解包目录再扫描。GPT-SoVITS 优先用 `gsv/script` 保留游戏剧本原文。解包支持范围由上游实现决定，不承诺所有游戏或加密格式。
 
@@ -99,7 +105,7 @@ RVC 用 `doctor → scan → 语料回听/尾音检查 → build → preprocess 
 - 新统一入口止于素材接入、数据整理、质量检查、对应模型训练与交接，不派发推理、配音、翻唱或发布；旧评估接口只消费已有产物。
 - 一站式指在同一主插件中组织和调用，不保证一次请求无人介入跑完。角色、台词与素材质量仍需回听和校对。
 - 模型出现/注册成功只证明文件存在或可发现，不证明音质达标。不同模型格式不互通，不用早期日语样例替代本次训练验收。
-- RVC 本版接入 v2 单角色训练编排；合成语料已经真实 GPU 训练与续训验证，尚未进行真实角色的长期训练、推理试听或主观音质验收。音色包固定标记 `qualityAccepted=false`。
+- RVC / Applio 接入 v2 单角色训练；合成语料已经真实 GPU 训练与续训验证，尚未进行真实角色的长期训练、推理试听或主观音质验收。音色包固定标记 `qualityAccepted=false`。Applio 的其他采样率、声码器、F0 选项和系统未在本轮完成 GPU 验收，具体边界见验证记录。
 - 不分发模型、环境或私人素材。番剧适配器要求已下载的本地 ASR/声纹模型。
 
 ## 验证

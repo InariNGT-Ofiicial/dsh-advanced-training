@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "repository": "https://github.com/IAHispano/Applio",
+  "commit": "fb427aa388a954a387da7034fbbc08313f7ffe8c",
+  "version": "3.7.1",
+  "license": "MIT",
+  "note": "External engine interface fingerprints; engine and weights are not bundled.",
+  "files": {
+    "rvc/train/train.py": "b415c37a923355f0b237be2a04bc2bb4f78a75cd35f4f9166a0be8c2295da85c",
+    "rvc/train/utils.py": "653d4588a423c3fef69523c7aab17c9756a488ebd1eb14cd74d7d677207a9a40",
+    "rvc/train/preprocess/preprocess.py": "06428260e0b76707bd2a383b1eeb9f322771f787e490484b9acfeabffbedd00c",
+    "rvc/train/extract/extract.py": "ca46c6127c9c2ba1bd0186ad5c4a4dd9eb5755c2ec73efeb53a15f8071c10c4e",
+    "rvc/train/extract/preparing_files.py": "6f068a41f73096018e92aa4a302d2feb84e83cf3d458f1b444eeb25ffa2bbaf9",
+    "rvc/train/process/extract_index.py": "44abd1feeb3283e6c8901c69bf951c98ba776cf7788c0fc470b81c3919a110d5",
+    "rvc/train/process/extract_model.py": "1122f3094b33a0591a03911d0c86217de38b2bcb8737ea08db32a306508a6b06",
+    "rvc/lib/user_config.py": "2f6ca558e51621ed4f4cb10956534c12e727bd382c097b004f515990ced679a7"
+  },
+  "hashNormalization": "CRLF normalized to LF for source files"
+}

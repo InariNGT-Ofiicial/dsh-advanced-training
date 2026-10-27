@@ -1,8 +1,8 @@
 {
   "name": "dsh-advanced-training",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
-  "description": "DeepseekHarness unified voice-model training entry: game/anime/own-audio materials, DDSP, GPT-SoVITS and RVC training backends, quality checks and model handoff. No inference, cover or publishing in the unified flow.",
+  "description": "DeepseekHarness voice-model training entry with DDSP, GPT-SoVITS, RVC and Applio backends, material preparation, verified resume and model handoff.",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
@@ -17,7 +17,8 @@
     "dataset-audit",
     "gpt-sovits",
     "ddsp-svc",
-    "rvc"
+    "rvc",
+    "applio"
   ],
   "license": "UNLICENSED",
   "engines": {
@@ -29,9 +30,10 @@
     }
   },
   "scripts": {
-    "test": "node test/smoke.mjs && node test/integration.mjs && node test/rvc.mjs && node test/rvc-process-tree.mjs && node test/rvc-resume.mjs",
+    "test": "node test/smoke.mjs && node test/integration.mjs && node test/rvc.mjs && node test/rvc-process-tree.mjs && node test/rvc-resume.mjs && node test/applio.mjs",
     "test:local": "node test/local-pipeline.mjs",
-    "test:rvc:local": "node test/rvc-local.mjs"
+    "test:rvc:local": "node test/rvc-local.mjs",
+    "test:applio:local": "node test/applio-local.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.1"

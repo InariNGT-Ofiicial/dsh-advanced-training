@@ -12,6 +12,9 @@ ap.add_argument('--rvc', required=True, type=Path)
 args = ap.parse_args()
 root = Path(__file__).resolve().parents[1]
 manifest = {'format': 1, 'note': 'Pinned runtime snapshots; no weights, media, environments or local configuration.', 'sources': []}
+existing = root/'vendor/manifest.json'
+if existing.is_file():
+    manifest['externalEngines'] = json.loads(existing.read_text(encoding='utf-8')).get('externalEngines', [])
 for name, src, url in [
     ('ddsp-pipeline', args.ddsp, 'https://github.com/InariNGT-Ofiicial/dsh-train-pipeline'),
     ('anime-voice', args.anime, 'https://github.com/InariNGT-Ofiicial/dsh-anime-voice'),

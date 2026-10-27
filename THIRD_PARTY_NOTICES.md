@@ -6,6 +6,7 @@
 - `vendor/anime-voice` 来自 [dsh-anime-voice](https://github.com/InariNGT-Ofiicial/dsh-anime-voice)，包含分析脚本和 tts-train-pipeline。原项目未授予开放许可、标记 UNLICENSED，本次不改写该声明。
 - `vendor/rvc-voice-kit` 来自 [rvc-voice-kit](https://github.com/InariNGT-Ofiicial/rvc-voice-kit)，固定提交 `6134032d160336e9a425450382529cec98585d38`，为 MIT；保留 [LICENSE](vendor/rvc-voice-kit/LICENSE)。仅冻结 6 个运行/说明文件；训练脚本补充显式续训开关，补丁与哈希记录在 manifest。
 - DDSP-SVC、GPT-SoVITS、RVC、MSST、ASR、声纹模型和解包工具分别遵循各自许可，由使用者独立准备。
+- Applio 为外部引擎，核验 [IAHispano/Applio 提交 fb427aa](https://github.com/IAHispano/Applio/tree/fb427aa388a954a387da7034fbbc08313f7ffe8c)，采用 [MIT 许可](https://github.com/IAHispano/Applio/blob/fb427aa388a954a387da7034fbbc08313f7ffe8c/LICENSE)。本插件分发自有适配器和接口指纹，不分发 Applio 本体、环境或权重；执行时保留原生训练实现，在独立任务目录冻结入口以装载严格恢复检查。
 
 来源提交及每个冻结文件的 SHA-256 见 [manifest](vendor/manifest.json)。上游原文档反映独立项目能力，主入口操作以 adv_train_catalog 为准；推理/翻唱/发布不暴露。
 
